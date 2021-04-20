@@ -3,7 +3,6 @@
 ///! # wtf8-rs
 ///!
 ///! Implementation of [the WTF-8 encoding](https://simonsapin.github.io/wtf-8/).
-
 // TODO before official release:
 // * Document safety on every usage of unsafe
 // * Better documentation
@@ -11,7 +10,6 @@
 
 // Much of the code from this library has been copied from std sys_commmon,
 // which itself copied from @SimonSapin's repo.
-
 extern crate alloc;
 
 pub mod codepoint;
@@ -20,6 +18,7 @@ pub mod wtf8buf;
 
 pub use codepoint::CodePoint;
 pub use wtf8::Wtf8;
+pub use wtf8buf::Wtf8Buf;
 
 #[inline]
 fn decode_surrogate(second_byte: u8, third_byte: u8) -> u16 {
