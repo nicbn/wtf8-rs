@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["CodePoints","Iterator of points over a string."],["EncodeUtf16",""],["ToStrError","Errors which can occur when converting `Wtf8` to `str`."],["Wtf8",""]],"trait":[["Wtf8Index","A helper trait to do `get` operation on `Wtf8`."]]});
