@@ -1,0 +1,8 @@
+[package]
+name = "wtf8-rs"
+version = "0.0.0"
+authors = ["nicbn <nicolas.nattis@gmail.com>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
