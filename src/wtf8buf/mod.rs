@@ -7,10 +7,13 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::borrow::{Borrow, BorrowMut};
 use core::convert::Infallible;
-use core::fmt;
 use core::iter::FromIterator;
 use core::ops::{Deref, DerefMut};
 use core::str::FromStr;
+use core::{char, fmt};
+
+#[cfg(test)]
+mod tests;
 
 /// A WTF-8 dynamically sized, growable string.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -111,6 +114,32 @@ impl Wtf8Buf {
     #[inline]
     pub fn clear(&mut self) {
         self.bytes.clear()
+    }
+
+    /// Creates a WTF-8 string from a potentially ill-formed UTF-16 iterator of 16-bit code units.
+    ///
+    /// This is lossless: calling `.encode_utf16()` on the resulting string
+    /// will always return the original code units.
+    pub fn from_utf16<I>(v: I) -> Wtf8Buf
+    where
+        I: IntoIterator<Item = u16>,
+    {
+        let iter = v.into_iter();
+        let mut string = Wtf8Buf::with_capacity(iter.size_hint().0);
+        for item in char::decode_utf16(iter) {
+            match item {
+                Ok(ch) => string.push_char(ch),
+                Err(surrogate) => {
+                    let surrogate = surrogate.unpaired_surrogate();
+                    // Surrogates are known to be in the code point range.
+                    let code_point = unsafe { CodePoint::from_u32_unchecked(surrogate as u32) };
+                    // Skip the WTF-8 concatenation check,
+                    // surrogate pairs are already decoded by decode_utf16
+                    string.push_code_point_unchecked(code_point)
+                }
+            }
+        }
+        string
     }
 
     /// Returns the slice of this object.

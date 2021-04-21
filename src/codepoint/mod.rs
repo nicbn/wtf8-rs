@@ -3,6 +3,9 @@
 use core::fmt;
 use core::iter::{FusedIterator, Peekable};
 
+#[cfg(test)]
+mod tests;
+
 /// A Unicode code point: from U+0000 to U+10FFFF.
 ///
 /// Compares with the `char` type,

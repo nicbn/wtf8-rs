@@ -12,6 +12,9 @@ use core::iter::FusedIterator;
 use core::ops::{Index, Range, RangeFrom, RangeFull, RangeTo};
 use core::{fmt, ptr, slice, str};
 
+#[cfg(test)]
+mod tests;
+
 /// A WTF-8 slice.
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
@@ -27,7 +30,7 @@ impl Wtf8 {
 
     /// Coerces into a `Wtf8`. This accepts an [`&str`](prim@str) argument.
     #[inline]
-    pub fn new<T: AsRef<Wtf8>>(x: &T) -> &Self {
+    pub fn new<T: ?Sized + AsRef<Wtf8>>(x: &T) -> &Self {
         x.as_ref()
     }
 
