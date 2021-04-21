@@ -635,7 +635,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">bytes</span>
     }
 
-    <span class="doccomment">/// Coerces into a `Wtf8`.</span>
+    <span class="doccomment">/// Coerces into a `Wtf8`. This accepts an [`&amp;str`](prim@str) argument.</span>
     <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">AsRef</span><span class="op">&lt;</span><span class="ident">Wtf8</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="ident">x</span>: <span class="kw-2">&amp;</span><span class="ident">T</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="self">Self</span> {
         <span class="ident">x</span>.<span class="ident">as_ref</span>()

@@ -25,7 +25,7 @@ impl Wtf8 {
         &self.bytes
     }
 
-    /// Coerces into a `Wtf8`.
+    /// Coerces into a `Wtf8`. This accepts an [`&str`](prim@str) argument.
     #[inline]
     pub fn new<T: AsRef<Wtf8>>(x: &T) -> &Self {
         x.as_ref()
