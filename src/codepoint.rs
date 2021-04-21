@@ -1,3 +1,5 @@
+//! A Unicode code point: from U+0000 to U+10FFFF.
+
 use core::fmt;
 use core::iter::{FusedIterator, Peekable};
 
@@ -23,7 +25,9 @@ impl fmt::Debug for CodePoint {
 impl CodePoint {
     /// Unsafely creates a new `CodePoint` without checking the value.
     ///
-    /// Only use when `value` is known to be less than or equal to 0x10FFFF.
+    /// # Safety
+    ///
+    /// Only safe if `value` is less than or equal to 0x10FFFF.
     #[inline]
     pub unsafe fn from_u32_unchecked(value: u32) -> CodePoint {
         CodePoint { value }
@@ -63,6 +67,9 @@ impl CodePoint {
     pub fn to_char(&self) -> Option<char> {
         match self.value {
             0xD800..=0xDFFF => None,
+            // Safety: value is known to be in char range, because it is not
+            // a surrogate, and is less than (#impl-Index<T>) as this is guaranteed
+            // by the type.
             _ => Some(unsafe { char::from_u32_unchecked(self.value) }),
         }
     }
@@ -78,7 +85,10 @@ impl CodePoint {
 
     /// Decode potentially ill-formed UTF-16.
     #[inline]
-    pub fn decode_utf16<I: Iterator<Item = u16>>(input: I) -> DecodeUtf16<I> {
+    pub fn decode_utf16<I>(input: I) -> DecodeUtf16<I>
+    where
+        I: Iterator<Item = u16>,
+    {
         DecodeUtf16 {
             input: input.peekable(),
         }
@@ -86,7 +96,10 @@ impl CodePoint {
 
     /// Encode potentially ill-formed UTF-16.
     #[inline]
-    pub fn encode_utf16<I: Iterator<Item = CodePoint>>(input: I) -> EncodeUtf16<I> {
+    pub fn encode_utf16<I>(input: I) -> EncodeUtf16<I>
+    where
+        I: Iterator<Item = CodePoint>,
+    {
         EncodeUtf16 { input, buf: None }
     }
 }
@@ -99,10 +112,16 @@ impl From<char> for CodePoint {
 }
 
 /// An iterator for decoding potentially ill-formed UTF-16.
-pub struct DecodeUtf16<I: Iterator> {
+pub struct DecodeUtf16<I>
+where
+    I: Iterator<Item = u16>,
+{
     input: Peekable<I>,
 }
-impl<I: Iterator<Item = u16>> Iterator for DecodeUtf16<I> {
+impl<I> Iterator for DecodeUtf16<I>
+where
+    I: Iterator<Item = u16>,
+{
     type Item = CodePoint;
 
     #[inline]
@@ -116,6 +135,7 @@ impl<I: Iterator<Item = u16>> Iterator for DecodeUtf16<I> {
             }
         }
 
+        // Safety: this can not be greater than 0x10FFFF by construction.
         Some(unsafe { CodePoint::from_u32_unchecked(val) })
     }
 
@@ -125,14 +145,20 @@ impl<I: Iterator<Item = u16>> Iterator for DecodeUtf16<I> {
         (l / 2, h)
     }
 }
-impl<I: FusedIterator<Item = u16>> FusedIterator for DecodeUtf16<I> {}
+impl<I> FusedIterator for DecodeUtf16<I> where I: FusedIterator<Item = u16> {}
 
 /// An iterator for encoding potentially ill-formed UTF-16.
-pub struct EncodeUtf16<I> {
+pub struct EncodeUtf16<I>
+where
+    I: Iterator<Item = CodePoint>,
+{
     input: I,
     buf: Option<u16>,
 }
-impl<I: Iterator<Item = CodePoint>> Iterator for EncodeUtf16<I> {
+impl<I> Iterator for EncodeUtf16<I>
+where
+    I: Iterator<Item = CodePoint>,
+{
     type Item = u16;
 
     #[inline]
@@ -160,4 +186,4 @@ impl<I: Iterator<Item = CodePoint>> Iterator for EncodeUtf16<I> {
         )
     }
 }
-impl<I: FusedIterator<Item = CodePoint>> FusedIterator for EncodeUtf16<I> {}
+impl<I> FusedIterator for EncodeUtf16<I> where I: FusedIterator<Item = CodePoint> {}

@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["IntoStringError","Errors which can occur when converting `Wtf8Buf` to `String`."],["Wtf8Buf",""]]});
+initSidebarItems({"struct":[["IntoStringError","Errors which can occur when converting `Wtf8Buf` to `String`."],["Wtf8Buf","A WTF-8 dynamically sized, growable string."]]});

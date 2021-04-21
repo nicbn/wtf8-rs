@@ -1,3 +1,3 @@
 (function() {var implementors = {};
-implementors["wtf8_rs"] = [{"text":"impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/alloc/borrow/trait.ToOwned.html\" title=\"trait alloc::borrow::ToOwned\">ToOwned</a> for <a class=\"struct\" href=\"wtf8_rs/wtf8/struct.Wtf8.html\" title=\"struct wtf8_rs::wtf8::Wtf8\">Wtf8</a>","synthetic":false,"types":["wtf8_rs::wtf8::Wtf8"]}];
+implementors["wtf8_rs"] = [{"text":"impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/alloc/borrow/trait.ToOwned.html\" title=\"trait alloc::borrow::ToOwned\">ToOwned</a> for <a class=\"struct\" href=\"wtf8_rs/struct.Wtf8.html\" title=\"struct wtf8_rs::Wtf8\">Wtf8</a>","synthetic":false,"types":["wtf8_rs::wtf8::Wtf8"]}];
 if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

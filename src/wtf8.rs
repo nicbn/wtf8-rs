@@ -1,3 +1,5 @@
+//! A WTF-8 slice.
+
 use crate::wtf8buf::Wtf8Buf;
 use crate::{codepoint, decode_surrogate, CodePoint};
 use alloc::borrow::Cow;
@@ -8,8 +10,9 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::iter::FusedIterator;
 use core::ops::{Index, Range, RangeFrom, RangeFull, RangeTo};
-use core::{fmt, mem, ptr, slice, str};
+use core::{fmt, ptr, slice, str};
 
+/// A WTF-8 slice.
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct Wtf8 {
@@ -22,10 +25,10 @@ impl Wtf8 {
         &self.bytes
     }
 
-    /// Losslessly converts a string into a `Wtf8` string.
+    /// Coerces into a `Wtf8`.
     #[inline]
-    pub fn from_str(value: &str) -> &Self {
-        unsafe { &*(value as *const str as *const Self) }
+    pub fn new<T: AsRef<Wtf8>>(x: &T) -> &Self {
+        x.as_ref()
     }
 
     /// Returns the length, in WTF-8 bytes.
@@ -41,7 +44,7 @@ impl Wtf8 {
     }
 
     /// Returns the code point at `position` if it is in the ASCII range,
-    /// or `b'\xFF' otherwise.
+    /// or `b'\xFF'` otherwise.
     ///
     /// # Panics
     ///
@@ -71,6 +74,7 @@ impl Wtf8 {
     pub fn to_str(&self) -> Result<&str, ToStrError> {
         match self.next_surrogate(0) {
             Some((valid_up_to, _)) => Err(ToStrError { valid_up_to }),
+            // Safety: there are no surrogates, therefore the string is UTF-8.
             None => Ok(unsafe { str::from_utf8_unchecked(&self.bytes) }),
         }
     }
@@ -84,6 +88,7 @@ impl Wtf8 {
     #[inline]
     pub fn to_string_lossy(&self) -> Cow<str> {
         let surrogate_pos = match self.next_surrogate(0) {
+            // Safety: there are no surrogates, therefore the string is UTF-8.
             None => return Cow::Borrowed(unsafe { str::from_utf8_unchecked(&self.bytes) }),
             Some((pos, _)) => pos,
         };
@@ -101,6 +106,7 @@ impl Wtf8 {
                 }
                 None => {
                     utf8_bytes.extend_from_slice(&wtf8_bytes[pos..]);
+                    // Safety: there are no surrogates, therefore the string is UTF-8.
                     return Cow::Owned(unsafe { String::from_utf8_unchecked(utf8_bytes) });
                 }
             }
@@ -109,7 +115,7 @@ impl Wtf8 {
 
     /// Returns a slice of the given string for the byte range.
     ///
-    /// Returns `None` whenever `Index::index` would panic.
+    /// Returns `None` whenever [`index`](#impl-Index<T>) would panic.
     #[inline]
     pub fn get<I: Wtf8Index>(&self, i: I) -> Option<&Self> {
         i.get(self)
@@ -126,7 +132,7 @@ impl Wtf8 {
     ///
     /// # Safety
     ///
-    /// Produces undefined behaviour whenever `Index::index` would panic.
+    /// Produces undefined behaviour whenever [`index`](#impl-Index<T>) would panic.
     #[inline]
     pub unsafe fn get_unchecked<I: Wtf8Index>(&self, i: I) -> &Self {
         &*i.get_unchecked(self)
@@ -138,65 +144,113 @@ impl Wtf8 {
         if index == self.len() {
             return true;
         }
-        match self.bytes.get(index) {
-            None => false,
-            Some(&b) => b < 128 || b >= 192,
-        }
+        !matches!(self.bytes.get(index), None | Some(128..=191))
     }
 
     /// Boxes this `Wtf8`.
     #[inline]
-    pub fn into_box(&self) -> Box<Wtf8> {
+    pub fn to_box(&self) -> Box<Wtf8> {
         let boxed: Box<[u8]> = self.bytes.into();
-        unsafe { mem::transmute(boxed) }
+        // Safety: This is sound as type layouts match
+        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut Wtf8) }
     }
 
     /// Creates a boxed, empty `Wtf8`.
     pub fn empty_box() -> Box<Wtf8> {
         let boxed: Box<[u8]> = Default::default();
-        unsafe { mem::transmute(boxed) }
+        // Safety: This is sound as type layouts match
+        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut Wtf8) }
     }
 
+    /// Boxes this `Wtf8` with [`Arc`](alloc::sync::Arc).
     #[inline]
-    pub fn into_arc(&self) -> Arc<Wtf8> {
+    pub fn to_arc(&self) -> Arc<Wtf8> {
         let arc: Arc<[u8]> = Arc::from(&self.bytes);
+        // Safety: This is sound as type layouts match
         unsafe { Arc::from_raw(Arc::into_raw(arc) as *const Wtf8) }
     }
 
+    /// Boxes this `Wtf8` with [`Rc`](alloc::rc::Rc).
     #[inline]
-    pub fn into_rc(&self) -> Rc<Wtf8> {
+    pub fn to_rc(&self) -> Rc<Wtf8> {
         let rc: Rc<[u8]> = Rc::from(&self.bytes);
+        // Safety: This is sound as type layouts match
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const Wtf8) }
     }
 
+    /// Converts this slice to its ASCII lower case equivalent in-place.
+    ///
+    /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
+    /// but non-ASCII letters are unchanged.
+    ///
+    /// To return a new lowercased value without modifying the existing one, use
+    /// [`to_ascii_lowercase`].
+    ///
+    /// [`to_ascii_lowercase`]: #method.to_ascii_lowercase
     #[inline]
     pub fn make_ascii_lowercase(&mut self) {
         self.bytes.make_ascii_lowercase()
     }
 
+    /// Converts this slice to its ASCII upper case equivalent in-place.
+    ///
+    /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
+    /// but non-ASCII letters are unchanged.
+    ///
+    /// To return a new uppercased value without modifying the existing one, use
+    /// [`to_ascii_uppercase`].
+    ///
+    /// [`to_ascii_uppercase`]: #method.to_ascii_uppercase
     #[inline]
     pub fn make_ascii_uppercase(&mut self) {
         self.bytes.make_ascii_uppercase()
     }
 
+    /// Returns a [`Wtf8Buf`] containing a copy of this slice where each byte
+    /// is mapped to its ASCII lower case equivalent.
+    ///
+    /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
+    /// but non-ASCII letters are unchanged.
     #[inline]
     pub fn to_ascii_lowercase(&self) -> Wtf8Buf {
         Wtf8Buf::from_bytes(self.bytes.to_ascii_lowercase())
     }
 
+    /// Returns a [`Wtf8Buf`] containing a copy of this slice where each byte
+    /// is mapped to its ASCII upper case equivalent.
+    ///
+    /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
+    /// but non-ASCII letters are unchanged.
+    ///
+    /// To uppercase the value in-place, use [`make_ascii_uppercase`].
+    ///
+    /// [`make_ascii_uppercase`]: #method.make_ascii_uppercase
     #[inline]
     pub fn to_ascii_uppercase(&self) -> Wtf8Buf {
         Wtf8Buf::from_bytes(self.bytes.to_ascii_uppercase())
     }
 
+    /// Checks if all bytes in this slice are within the ASCII range.
     #[inline]
     pub fn is_ascii(&self) -> bool {
         self.bytes.is_ascii()
     }
 
+    /// Checks that two slices are an ASCII case-insensitive match.
+    ///
+    /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
+    /// but without allocating and copying temporaries.
     #[inline]
     pub fn eq_ignore_ascii_case(&self, other: &Self) -> bool {
         self.bytes.eq_ignore_ascii_case(&other.bytes)
+    }
+
+    #[inline]
+    pub(crate) fn initial_trail_surrogate(&self) -> Option<u16> {
+        match self.bytes {
+            [0xED, b2 @ 0xB0..=0xBF, b3, ..] => Some(decode_surrogate(b2, b3)),
+            _ => None,
+        }
     }
 
     #[inline]
@@ -230,6 +284,27 @@ impl Wtf8 {
     }
 }
 
+impl From<&Wtf8> for Box<Wtf8> {
+    #[inline]
+    fn from(x: &Wtf8) -> Self {
+        x.to_box()
+    }
+}
+
+impl From<&Wtf8> for Rc<Wtf8> {
+    #[inline]
+    fn from(x: &Wtf8) -> Self {
+        x.to_rc()
+    }
+}
+
+impl From<&Wtf8> for Arc<Wtf8> {
+    #[inline]
+    fn from(x: &Wtf8) -> Self {
+        x.to_arc()
+    }
+}
+
 impl fmt::Debug for Wtf8 {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         fn write_str_escaped(f: &mut fmt::Formatter<'_>, s: &str) -> fmt::Result {
@@ -243,12 +318,14 @@ impl fmt::Debug for Wtf8 {
         formatter.write_str("\"")?;
         let mut pos = 0;
         while let Some((surrogate_pos, surrogate)) = self.next_surrogate(pos) {
+            // Safety: there are no surrogates, so it is UTF-8.
             write_str_escaped(formatter, unsafe {
                 str::from_utf8_unchecked(&self.bytes[pos..surrogate_pos])
             })?;
             write!(formatter, "\\u{{{:x}}}", surrogate)?;
             pos = surrogate_pos + 3;
         }
+        // Safety: there are no surrogates, so it is UTF-8.
         write_str_escaped(formatter, unsafe {
             str::from_utf8_unchecked(&self.bytes[pos..])
         })?;
@@ -263,6 +340,7 @@ impl fmt::Display for Wtf8 {
         loop {
             match self.next_surrogate(pos) {
                 Some((surrogate_pos, _)) => {
+                    // Safety: there are no surrogates, so it is UTF-8.
                     formatter.write_str(unsafe {
                         str::from_utf8_unchecked(&wtf8_bytes[pos..surrogate_pos])
                     })?;
@@ -270,6 +348,7 @@ impl fmt::Display for Wtf8 {
                     pos = surrogate_pos + 3;
                 }
                 None => {
+                    // Safety: there are no surrogates, so it is UTF-8.
                     let s = unsafe { str::from_utf8_unchecked(&wtf8_bytes[pos..]) };
                     if pos == 0 {
                         return s.fmt(formatter);
@@ -306,7 +385,9 @@ impl<T: Wtf8Index> Index<T> for Wtf8 {
 impl AsRef<Wtf8> for str {
     #[inline]
     fn as_ref(&self) -> &Wtf8 {
-        Wtf8::from_str(self)
+        // Safety: the cast is sound because repr(transparent), matching the layout of str.
+        // UTF-8 is a subset of WTF-8, so type invariants are never violated.
+        unsafe { &*(self as *const str as *const Wtf8) }
     }
 }
 
@@ -316,6 +397,7 @@ impl AsRef<Wtf8> for str {
 /// library.
 pub unsafe trait Wtf8Index: fmt::Debug + Clone + private::Sealed {
     fn get(self, slice: &Wtf8) -> Option<&Wtf8>;
+    #[allow(clippy::missing_safety_doc)]
     unsafe fn get_unchecked(self, slice: *const Wtf8) -> *const Wtf8;
 }
 unsafe impl Wtf8Index for Range<usize> {
@@ -328,6 +410,7 @@ unsafe impl Wtf8Index for Range<usize> {
         {
             None
         } else {
+            // Safety: guaranteed by the conditions above.
             Some(unsafe { &*self.get_unchecked(slice) })
         }
     }
@@ -345,6 +428,7 @@ unsafe impl Wtf8Index for RangeFrom<usize> {
         if !slice.is_code_point_boundary(self.start) {
             None
         } else {
+            // Safety: guaranteed by the conditions above.
             Some(unsafe { &*self.get_unchecked(slice) })
         }
     }
@@ -362,6 +446,7 @@ unsafe impl Wtf8Index for RangeTo<usize> {
         if self.end >= slice.len() || !slice.is_code_point_boundary(self.end) {
             None
         } else {
+            // Safety: guaranteed by the conditions above.
             Some(unsafe { &*self.get_unchecked(slice) })
         }
     }
@@ -457,9 +542,10 @@ impl Iterator for CodePoints<'_> {
 
         let x = *self.bytes.next()?;
         if x < 128 {
+            // Safety: the char is ascii.
             return Some(unsafe { CodePoint::from_u32_unchecked(x as u32) });
         }
-
+        
         // Multibyte case follows
         // Decode from a byte combination out of: [[[x y] z] w]
         // NOTE: Performance is sensitive to the exact formulation here
@@ -479,7 +565,8 @@ impl Iterator for CodePoints<'_> {
                 ch = (init & 7) << 18 | utf8_acc_cont_byte(y_z, w);
             }
         }
-
+        
+        // Safety: the code point can not be greater than 0x10_FFFF.
         Some(unsafe { CodePoint::from_u32_unchecked(ch) })
     }
 
@@ -491,6 +578,7 @@ impl Iterator for CodePoints<'_> {
 }
 impl FusedIterator for CodePoints<'_> {}
 
+/// An iterator for encoding potentially ill-formed UTF-16 from a WTF-8 input.
 pub struct EncodeUtf16<'a>(codepoint::EncodeUtf16<CodePoints<'a>>);
 impl Iterator for EncodeUtf16<'_> {
     type Item = u16;

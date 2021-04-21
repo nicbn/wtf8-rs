@@ -519,7 +519,97 @@
 <span id="516">516</span>
 <span id="517">517</span>
 <span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
+<span id="552">552</span>
+<span id="553">553</span>
+<span id="554">554</span>
+<span id="555">555</span>
+<span id="556">556</span>
+<span id="557">557</span>
+<span id="558">558</span>
+<span id="559">559</span>
+<span id="560">560</span>
+<span id="561">561</span>
+<span id="562">562</span>
+<span id="563">563</span>
+<span id="564">564</span>
+<span id="565">565</span>
+<span id="566">566</span>
+<span id="567">567</span>
+<span id="568">568</span>
+<span id="569">569</span>
+<span id="570">570</span>
+<span id="571">571</span>
+<span id="572">572</span>
+<span id="573">573</span>
+<span id="574">574</span>
+<span id="575">575</span>
+<span id="576">576</span>
+<span id="577">577</span>
+<span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
+<span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
+<span id="585">585</span>
+<span id="586">586</span>
+<span id="587">587</span>
+<span id="588">588</span>
+<span id="589">589</span>
+<span id="590">590</span>
+<span id="591">591</span>
+<span id="592">592</span>
+<span id="593">593</span>
+<span id="594">594</span>
+<span id="595">595</span>
+<span id="596">596</span>
+<span id="597">597</span>
+<span id="598">598</span>
+<span id="599">599</span>
+<span id="600">600</span>
+<span id="601">601</span>
+<span id="602">602</span>
+<span id="603">603</span>
+<span id="604">604</span>
+<span id="605">605</span>
+<span id="606">606</span>
 </pre><div class="example-wrap"><pre class="rust ">
+<span class="doccomment">//! A WTF-8 slice.</span>
+
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">wtf8buf</span>::<span class="ident">Wtf8Buf</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">codepoint</span>, <span class="ident">decode_surrogate</span>, <span class="ident">CodePoint</span>};
 <span class="kw">use</span> <span class="ident">alloc</span>::<span class="ident">borrow</span>::<span class="ident">Cow</span>;
@@ -530,8 +620,9 @@
 <span class="kw">use</span> <span class="ident">alloc</span>::<span class="ident">vec</span>::<span class="ident">Vec</span>;
 <span class="kw">use</span> <span class="ident">core</span>::<span class="ident">iter</span>::<span class="ident">FusedIterator</span>;
 <span class="kw">use</span> <span class="ident">core</span>::<span class="ident">ops</span>::{<span class="ident">Index</span>, <span class="ident">Range</span>, <span class="ident">RangeFrom</span>, <span class="ident">RangeFull</span>, <span class="ident">RangeTo</span>};
-<span class="kw">use</span> <span class="ident">core</span>::{<span class="ident">fmt</span>, <span class="ident">mem</span>, <span class="ident">ptr</span>, <span class="ident">slice</span>, <span class="ident">str</span>};
+<span class="kw">use</span> <span class="ident">core</span>::{<span class="ident">fmt</span>, <span class="ident">ptr</span>, <span class="ident">slice</span>, <span class="ident">str</span>};
 
+<span class="doccomment">/// A WTF-8 slice.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>)]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">transparent</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Wtf8</span> {
@@ -544,10 +635,10 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">bytes</span>
     }
 
-    <span class="doccomment">/// Losslessly converts a string into a `Wtf8` string.</span>
+    <span class="doccomment">/// Coerces into a `Wtf8`.</span>
     <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_str</span>(<span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="self">Self</span> {
-        <span class="kw">unsafe</span> { <span class="kw-2">&amp;</span><span class="kw-2">*</span>(<span class="ident">value</span> <span class="kw">as</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">str</span> <span class="kw">as</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="self">Self</span>) }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">AsRef</span><span class="op">&lt;</span><span class="ident">Wtf8</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="ident">x</span>: <span class="kw-2">&amp;</span><span class="ident">T</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="self">Self</span> {
+        <span class="ident">x</span>.<span class="ident">as_ref</span>()
     }
 
     <span class="doccomment">/// Returns the length, in WTF-8 bytes.</span>
@@ -563,7 +654,7 @@
     }
 
     <span class="doccomment">/// Returns the code point at `position` if it is in the ASCII range,</span>
-    <span class="doccomment">/// or `b&#39;\xFF&#39; otherwise.</span>
+    <span class="doccomment">/// or `b&#39;\xFF&#39;` otherwise.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Panics</span>
     <span class="doccomment">///</span>
@@ -593,6 +684,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_str</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">ToStrError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">next_surrogate</span>(<span class="number">0</span>) {
             <span class="prelude-val">Some</span>((<span class="ident">valid_up_to</span>, <span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ToStrError</span> { <span class="ident">valid_up_to</span> }),
+            <span class="comment">// Safety: there are no surrogates, therefore the string is UTF-8.</span>
             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="kw">unsafe</span> { <span class="ident">str</span>::<span class="ident">from_utf8_unchecked</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">bytes</span>) }),
         }
     }
@@ -606,6 +698,7 @@
     <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_string_lossy</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Cow</span><span class="op">&lt;</span><span class="ident">str</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">surrogate_pos</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">next_surrogate</span>(<span class="number">0</span>) {
+            <span class="comment">// Safety: there are no surrogates, therefore the string is UTF-8.</span>
             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="ident">Cow</span>::<span class="ident">Borrowed</span>(<span class="kw">unsafe</span> { <span class="ident">str</span>::<span class="ident">from_utf8_unchecked</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">bytes</span>) }),
             <span class="prelude-val">Some</span>((<span class="ident">pos</span>, <span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">pos</span>,
         };
@@ -623,6 +716,7 @@
                 }
                 <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="ident">utf8_bytes</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">wtf8_bytes</span>[<span class="ident">pos</span>..]);
+                    <span class="comment">// Safety: there are no surrogates, therefore the string is UTF-8.</span>
                     <span class="kw">return</span> <span class="ident">Cow</span>::<span class="ident">Owned</span>(<span class="kw">unsafe</span> { <span class="ident">String</span>::<span class="ident">from_utf8_unchecked</span>(<span class="ident">utf8_bytes</span>) });
                 }
             }
@@ -631,7 +725,7 @@
 
     <span class="doccomment">/// Returns a slice of the given string for the byte range.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns `None` whenever `Index::index` would panic.</span>
+    <span class="doccomment">/// Returns `None` whenever [`index`](#impl-Index&lt;T&gt;) would panic.</span>
     <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get</span><span class="op">&lt;</span><span class="ident">I</span>: <span class="ident">Wtf8Index</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">i</span>: <span class="ident">I</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="self">Self</span><span class="op">&gt;</span> {
         <span class="ident">i</span>.<span class="ident">get</span>(<span class="self">self</span>)
@@ -648,7 +742,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Safety</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// Produces undefined behaviour whenever `Index::index` would panic.</span>
+    <span class="doccomment">/// Produces undefined behaviour whenever [`index`](#impl-Index&lt;T&gt;) would panic.</span>
     <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">get_unchecked</span><span class="op">&lt;</span><span class="ident">I</span>: <span class="ident">Wtf8Index</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">i</span>: <span class="ident">I</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="self">Self</span> {
         <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="ident">i</span>.<span class="ident">get_unchecked</span>(<span class="self">self</span>)
@@ -660,65 +754,113 @@
         <span class="kw">if</span> <span class="ident">index</span> <span class="op">=</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">len</span>() {
             <span class="kw">return</span> <span class="bool-val">true</span>;
         }
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">bytes</span>.<span class="ident">get</span>(<span class="ident">index</span>) {
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">false</span>,
-            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">b</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">b</span> <span class="op">&lt;</span> <span class="number">128</span> <span class="op">|</span><span class="op">|</span> <span class="ident">b</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">192</span>,
-        }
+        <span class="op">!</span><span class="macro">matches</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">bytes</span>.<span class="ident">get</span>(<span class="ident">index</span>), <span class="prelude-val">None</span> <span class="op">|</span> <span class="prelude-val">Some</span>(<span class="number">128</span>..<span class="op">=</span><span class="number">191</span>))
     }
 
     <span class="doccomment">/// Boxes this `Wtf8`.</span>
     <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_box</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">Wtf8</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_box</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">Wtf8</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">boxed</span>: <span class="ident">Box</span><span class="op">&lt;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">bytes</span>.<span class="ident">into</span>();
-        <span class="kw">unsafe</span> { <span class="ident">mem</span>::<span class="ident">transmute</span>(<span class="ident">boxed</span>) }
+        <span class="comment">// Safety: This is sound as type layouts match</span>
+        <span class="kw">unsafe</span> { <span class="ident">Box</span>::<span class="ident">from_raw</span>(<span class="ident">Box</span>::<span class="ident">into_raw</span>(<span class="ident">boxed</span>) <span class="kw">as</span> <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">Wtf8</span>) }
     }
 
     <span class="doccomment">/// Creates a boxed, empty `Wtf8`.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">empty_box</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">Wtf8</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">boxed</span>: <span class="ident">Box</span><span class="op">&lt;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Default</span>::<span class="ident">default</span>();
-        <span class="kw">unsafe</span> { <span class="ident">mem</span>::<span class="ident">transmute</span>(<span class="ident">boxed</span>) }
+        <span class="comment">// Safety: This is sound as type layouts match</span>
+        <span class="kw">unsafe</span> { <span class="ident">Box</span>::<span class="ident">from_raw</span>(<span class="ident">Box</span>::<span class="ident">into_raw</span>(<span class="ident">boxed</span>) <span class="kw">as</span> <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">Wtf8</span>) }
     }
 
+    <span class="doccomment">/// Boxes this `Wtf8` with [`Arc`](alloc::sync::Arc).</span>
     <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_arc</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Wtf8</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_arc</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Wtf8</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">arc</span>: <span class="ident">Arc</span><span class="op">&lt;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">from</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">bytes</span>);
+        <span class="comment">// Safety: This is sound as type layouts match</span>
         <span class="kw">unsafe</span> { <span class="ident">Arc</span>::<span class="ident">from_raw</span>(<span class="ident">Arc</span>::<span class="ident">into_raw</span>(<span class="ident">arc</span>) <span class="kw">as</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">Wtf8</span>) }
     }
 
+    <span class="doccomment">/// Boxes this `Wtf8` with [`Rc`](alloc::rc::Rc).</span>
     <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_rc</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">Wtf8</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_rc</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">Wtf8</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">rc</span>: <span class="ident">Rc</span><span class="op">&lt;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Rc</span>::<span class="ident">from</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">bytes</span>);
+        <span class="comment">// Safety: This is sound as type layouts match</span>
         <span class="kw">unsafe</span> { <span class="ident">Rc</span>::<span class="ident">from_raw</span>(<span class="ident">Rc</span>::<span class="ident">into_raw</span>(<span class="ident">rc</span>) <span class="kw">as</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">Wtf8</span>) }
     }
 
+    <span class="doccomment">/// Converts this slice to its ASCII lower case equivalent in-place.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// ASCII letters &#39;A&#39; to &#39;Z&#39; are mapped to &#39;a&#39; to &#39;z&#39;,</span>
+    <span class="doccomment">/// but non-ASCII letters are unchanged.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// To return a new lowercased value without modifying the existing one, use</span>
+    <span class="doccomment">/// [`to_ascii_lowercase`].</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// [`to_ascii_lowercase`]: #method.to_ascii_lowercase</span>
     <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">make_ascii_lowercase</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
         <span class="self">self</span>.<span class="ident">bytes</span>.<span class="ident">make_ascii_lowercase</span>()
     }
 
+    <span class="doccomment">/// Converts this slice to its ASCII upper case equivalent in-place.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// ASCII letters &#39;a&#39; to &#39;z&#39; are mapped to &#39;A&#39; to &#39;Z&#39;,</span>
+    <span class="doccomment">/// but non-ASCII letters are unchanged.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// To return a new uppercased value without modifying the existing one, use</span>
+    <span class="doccomment">/// [`to_ascii_uppercase`].</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// [`to_ascii_uppercase`]: #method.to_ascii_uppercase</span>
     <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">make_ascii_uppercase</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
         <span class="self">self</span>.<span class="ident">bytes</span>.<span class="ident">make_ascii_uppercase</span>()
     }
 
+    <span class="doccomment">/// Returns a [`Wtf8Buf`] containing a copy of this slice where each byte</span>
+    <span class="doccomment">/// is mapped to its ASCII lower case equivalent.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// ASCII letters &#39;A&#39; to &#39;Z&#39; are mapped to &#39;a&#39; to &#39;z&#39;,</span>
+    <span class="doccomment">/// but non-ASCII letters are unchanged.</span>
     <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_ascii_lowercase</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Wtf8Buf</span> {
         <span class="ident">Wtf8Buf</span>::<span class="ident">from_bytes</span>(<span class="self">self</span>.<span class="ident">bytes</span>.<span class="ident">to_ascii_lowercase</span>())
     }
 
+    <span class="doccomment">/// Returns a [`Wtf8Buf`] containing a copy of this slice where each byte</span>
+    <span class="doccomment">/// is mapped to its ASCII upper case equivalent.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// ASCII letters &#39;a&#39; to &#39;z&#39; are mapped to &#39;A&#39; to &#39;Z&#39;,</span>
+    <span class="doccomment">/// but non-ASCII letters are unchanged.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// To uppercase the value in-place, use [`make_ascii_uppercase`].</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// [`make_ascii_uppercase`]: #method.make_ascii_uppercase</span>
     <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_ascii_uppercase</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Wtf8Buf</span> {
         <span class="ident">Wtf8Buf</span>::<span class="ident">from_bytes</span>(<span class="self">self</span>.<span class="ident">bytes</span>.<span class="ident">to_ascii_uppercase</span>())
     }
 
+    <span class="doccomment">/// Checks if all bytes in this slice are within the ASCII range.</span>
     <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_ascii</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">bytes</span>.<span class="ident">is_ascii</span>()
     }
 
+    <span class="doccomment">/// Checks that two slices are an ASCII case-insensitive match.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,</span>
+    <span class="doccomment">/// but without allocating and copying temporaries.</span>
     <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">eq_ignore_ascii_case</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">bytes</span>.<span class="ident">eq_ignore_ascii_case</span>(<span class="kw-2">&amp;</span><span class="ident">other</span>.<span class="ident">bytes</span>)
+    }
+
+    <span class="attribute">#[<span class="ident">inline</span>]</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">initial_trail_surrogate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u16</span><span class="op">&gt;</span> {
+        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">bytes</span> {
+            [<span class="number">0xED</span>, <span class="ident">b2</span> @ <span class="number">0xB0</span>..<span class="op">=</span><span class="number">0xBF</span>, <span class="ident">b3</span>, ..] <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">decode_surrogate</span>(<span class="ident">b2</span>, <span class="ident">b3</span>)),
+            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
+        }
     }
 
     <span class="attribute">#[<span class="ident">inline</span>]</span>
@@ -752,6 +894,27 @@
     }
 }
 
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Wtf8</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">Wtf8</span><span class="op">&gt;</span> {
+    <span class="attribute">#[<span class="ident">inline</span>]</span>
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">x</span>: <span class="kw-2">&amp;</span><span class="ident">Wtf8</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="ident">x</span>.<span class="ident">to_box</span>()
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Wtf8</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">Wtf8</span><span class="op">&gt;</span> {
+    <span class="attribute">#[<span class="ident">inline</span>]</span>
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">x</span>: <span class="kw-2">&amp;</span><span class="ident">Wtf8</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="ident">x</span>.<span class="ident">to_rc</span>()
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Wtf8</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Wtf8</span><span class="op">&gt;</span> {
+    <span class="attribute">#[<span class="ident">inline</span>]</span>
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">x</span>: <span class="kw-2">&amp;</span><span class="ident">Wtf8</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="ident">x</span>.<span class="ident">to_arc</span>()
+    }
+}
+
 <span class="kw">impl</span> <span class="ident">fmt</span>::<span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">Wtf8</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">formatter</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
         <span class="kw">fn</span> <span class="ident">write_str_escaped</span>(<span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>, <span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
@@ -765,12 +928,14 @@
         <span class="ident">formatter</span>.<span class="ident">write_str</span>(<span class="string">&quot;\&quot;&quot;</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">pos</span> <span class="op">=</span> <span class="number">0</span>;
         <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">surrogate_pos</span>, <span class="ident">surrogate</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">next_surrogate</span>(<span class="ident">pos</span>) {
+            <span class="comment">// Safety: there are no surrogates, so it is UTF-8.</span>
             <span class="ident">write_str_escaped</span>(<span class="ident">formatter</span>, <span class="kw">unsafe</span> {
                 <span class="ident">str</span>::<span class="ident">from_utf8_unchecked</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">bytes</span>[<span class="ident">pos</span>..<span class="ident">surrogate_pos</span>])
             })<span class="question-mark">?</span>;
             <span class="macro">write</span><span class="macro">!</span>(<span class="ident">formatter</span>, <span class="string">&quot;\\u{{{:x}}}&quot;</span>, <span class="ident">surrogate</span>)<span class="question-mark">?</span>;
             <span class="ident">pos</span> <span class="op">=</span> <span class="ident">surrogate_pos</span> <span class="op">+</span> <span class="number">3</span>;
         }
+        <span class="comment">// Safety: there are no surrogates, so it is UTF-8.</span>
         <span class="ident">write_str_escaped</span>(<span class="ident">formatter</span>, <span class="kw">unsafe</span> {
             <span class="ident">str</span>::<span class="ident">from_utf8_unchecked</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">bytes</span>[<span class="ident">pos</span>..])
         })<span class="question-mark">?</span>;
@@ -785,6 +950,7 @@
         <span class="kw">loop</span> {
             <span class="kw">match</span> <span class="self">self</span>.<span class="ident">next_surrogate</span>(<span class="ident">pos</span>) {
                 <span class="prelude-val">Some</span>((<span class="ident">surrogate_pos</span>, <span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="comment">// Safety: there are no surrogates, so it is UTF-8.</span>
                     <span class="ident">formatter</span>.<span class="ident">write_str</span>(<span class="kw">unsafe</span> {
                         <span class="ident">str</span>::<span class="ident">from_utf8_unchecked</span>(<span class="kw-2">&amp;</span><span class="ident">wtf8_bytes</span>[<span class="ident">pos</span>..<span class="ident">surrogate_pos</span>])
                     })<span class="question-mark">?</span>;
@@ -792,6 +958,7 @@
                     <span class="ident">pos</span> <span class="op">=</span> <span class="ident">surrogate_pos</span> <span class="op">+</span> <span class="number">3</span>;
                 }
                 <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="comment">// Safety: there are no surrogates, so it is UTF-8.</span>
                     <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">str</span>::<span class="ident">from_utf8_unchecked</span>(<span class="kw-2">&amp;</span><span class="ident">wtf8_bytes</span>[<span class="ident">pos</span>..]) };
                     <span class="kw">if</span> <span class="ident">pos</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
                         <span class="kw">return</span> <span class="ident">s</span>.<span class="ident">fmt</span>(<span class="ident">formatter</span>);
@@ -828,7 +995,9 @@
 <span class="kw">impl</span> <span class="ident">AsRef</span><span class="op">&lt;</span><span class="ident">Wtf8</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">str</span> {
     <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="kw">fn</span> <span class="ident">as_ref</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Wtf8</span> {
-        <span class="ident">Wtf8</span>::<span class="ident">from_str</span>(<span class="self">self</span>)
+        <span class="comment">// Safety: the cast is sound because repr(transparent), matching the layout of str.</span>
+        <span class="comment">// UTF-8 is a subset of WTF-8, so type invariants are never violated.</span>
+        <span class="kw">unsafe</span> { <span class="kw-2">&amp;</span><span class="kw-2">*</span>(<span class="self">self</span> <span class="kw">as</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">str</span> <span class="kw">as</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">Wtf8</span>) }
     }
 }
 
@@ -838,6 +1007,7 @@
 <span class="doccomment">/// library.</span>
 <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">trait</span> <span class="ident">Wtf8Index</span>: <span class="ident">fmt</span>::<span class="ident">Debug</span> <span class="op">+</span> <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">private</span>::<span class="ident">Sealed</span> {
     <span class="kw">fn</span> <span class="ident">get</span>(<span class="self">self</span>, <span class="ident">slice</span>: <span class="kw-2">&amp;</span><span class="ident">Wtf8</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Wtf8</span><span class="op">&gt;</span>;
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">missing_safety_doc</span>)]</span>
     <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">get_unchecked</span>(<span class="self">self</span>, <span class="ident">slice</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">Wtf8</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">Wtf8</span>;
 }
 <span class="kw">unsafe</span> <span class="kw">impl</span> <span class="ident">Wtf8Index</span> <span class="kw">for</span> <span class="ident">Range</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
@@ -850,6 +1020,7 @@
         {
             <span class="prelude-val">None</span>
         } <span class="kw">else</span> {
+            <span class="comment">// Safety: guaranteed by the conditions above.</span>
             <span class="prelude-val">Some</span>(<span class="kw">unsafe</span> { <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">get_unchecked</span>(<span class="ident">slice</span>) })
         }
     }
@@ -867,6 +1038,7 @@
         <span class="kw">if</span> <span class="op">!</span><span class="ident">slice</span>.<span class="ident">is_code_point_boundary</span>(<span class="self">self</span>.<span class="ident">start</span>) {
             <span class="prelude-val">None</span>
         } <span class="kw">else</span> {
+            <span class="comment">// Safety: guaranteed by the conditions above.</span>
             <span class="prelude-val">Some</span>(<span class="kw">unsafe</span> { <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">get_unchecked</span>(<span class="ident">slice</span>) })
         }
     }
@@ -884,6 +1056,7 @@
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">end</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">slice</span>.<span class="ident">len</span>() <span class="op">|</span><span class="op">|</span> <span class="op">!</span><span class="ident">slice</span>.<span class="ident">is_code_point_boundary</span>(<span class="self">self</span>.<span class="ident">end</span>) {
             <span class="prelude-val">None</span>
         } <span class="kw">else</span> {
+            <span class="comment">// Safety: guaranteed by the conditions above.</span>
             <span class="prelude-val">Some</span>(<span class="kw">unsafe</span> { <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">get_unchecked</span>(<span class="ident">slice</span>) })
         }
     }
@@ -979,9 +1152,10 @@
 
         <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">bytes</span>.<span class="ident">next</span>()<span class="question-mark">?</span>;
         <span class="kw">if</span> <span class="ident">x</span> <span class="op">&lt;</span> <span class="number">128</span> {
+            <span class="comment">// Safety: the char is ascii.</span>
             <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="kw">unsafe</span> { <span class="ident">CodePoint</span>::<span class="ident">from_u32_unchecked</span>(<span class="ident">x</span> <span class="kw">as</span> <span class="ident">u32</span>) });
         }
-
+        
         <span class="comment">// Multibyte case follows</span>
         <span class="comment">// Decode from a byte combination out of: [[[x y] z] w]</span>
         <span class="comment">// NOTE: Performance is sensitive to the exact formulation here</span>
@@ -1001,7 +1175,8 @@
                 <span class="ident">ch</span> <span class="op">=</span> (<span class="ident">init</span> <span class="op">&amp;</span> <span class="number">7</span>) <span class="op">&lt;</span><span class="op">&lt;</span> <span class="number">18</span> <span class="op">|</span> <span class="ident">utf8_acc_cont_byte</span>(<span class="ident">y_z</span>, <span class="ident">w</span>);
             }
         }
-
+        
+        <span class="comment">// Safety: the code point can not be greater than 0x10_FFFF.</span>
         <span class="prelude-val">Some</span>(<span class="kw">unsafe</span> { <span class="ident">CodePoint</span>::<span class="ident">from_u32_unchecked</span>(<span class="ident">ch</span>) })
     }
 
@@ -1013,6 +1188,7 @@
 }
 <span class="kw">impl</span> <span class="ident">FusedIterator</span> <span class="kw">for</span> <span class="ident">CodePoints</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {}
 
+<span class="doccomment">/// An iterator for encoding potentially ill-formed UTF-16 from a WTF-8 input.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">EncodeUtf16</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="ident">codepoint</span>::<span class="ident">EncodeUtf16</span><span class="op">&lt;</span><span class="ident">CodePoints</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span><span class="op">&gt;</span>);
 <span class="kw">impl</span> <span class="ident">Iterator</span> <span class="kw">for</span> <span class="ident">EncodeUtf16</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
     <span class="kw">type</span> <span class="ident">Item</span> <span class="op">=</span> <span class="ident">u16</span>;

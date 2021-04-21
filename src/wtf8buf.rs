@@ -1,13 +1,18 @@
+//! A WTF-8 dynamically sized, growable string.
+
 use crate::{decode_surrogate, decode_surrogate_pair, CodePoint, Wtf8};
 use alloc::borrow::ToOwned;
 use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::borrow::{Borrow, BorrowMut};
+use core::convert::Infallible;
+use core::fmt;
 use core::iter::FromIterator;
 use core::ops::{Deref, DerefMut};
-use core::{fmt, mem};
+use core::str::FromStr;
 
+/// A WTF-8 dynamically sized, growable string.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Wtf8Buf {
     bytes: Vec<u8>,
@@ -57,11 +62,27 @@ impl Wtf8Buf {
         self.bytes.reserve(additional)
     }
 
+    /// Reserves the minimum capacity for exactly `additional` more elements to
+    /// be inserted in the given `Wtf8Buf`. After calling `reserve_exact`,
+    /// capacity will be greater than or equal to `self.len() + additional`.
+    /// Does nothing if the capacity is already sufficient.
+    ///
+    /// Note that the allocator may give the collection more space than it
+    /// requests. Therefore, capacity can not be relied upon to be precisely
+    /// minimal. Prefer `reserve` if future insertions are expected.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity overflows `usize`.
     #[inline]
     pub fn reserve_exact(&mut self, additional: usize) {
         self.bytes.reserve_exact(additional)
     }
 
+    /// Shrinks the capacity of the vector as much as possible.
+    ///
+    /// It will drop down as close as possible to the length but the allocator
+    /// may still inform the vector that there is space for a few more elements.
     #[inline]
     pub fn shrink_to_fit(&mut self) {
         self.bytes.shrink_to_fit()
@@ -79,6 +100,7 @@ impl Wtf8Buf {
     ///
     /// Since WTF-8 is a superset of UTF-8, this always succeeds.
     #[inline]
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(str: &str) -> Wtf8Buf {
         Wtf8Buf {
             bytes: <[_]>::to_vec(str.as_bytes()),
@@ -94,19 +116,46 @@ impl Wtf8Buf {
     /// Returns the slice of this object.
     #[inline]
     pub fn as_wtf8(&self) -> &Wtf8 {
+        // Safety: Wtf8 is transparent, type layouts match.
         unsafe { &*(self.bytes.as_slice() as *const [u8] as *const Wtf8) }
     }
 
     /// Returns the slice of this object.
     #[inline]
     pub fn as_mut_wtf8(&mut self) -> &mut Wtf8 {
+        // Safety: Wtf8 is transparent, type layouts match.
         unsafe { &mut *(self.bytes.as_mut_slice() as *mut [u8] as *mut Wtf8) }
     }
 
-    /// Append a UTF-8 or WTF-8 slice at the end of the string.
+    /// Append a UTF-8 slice at the end of the string.
     #[inline]
-    pub fn push_slice<T: AsRef<Wtf8>>(&mut self, other: &T) {
-        self.bytes.extend_from_slice(other.as_ref().bytes())
+    pub fn push_str(&mut self, other: &str) {
+        self.bytes.extend_from_slice(other.as_bytes())
+    }
+
+    /// Append a string with WTF-8 encoding.
+    ///
+    /// This replaces newly paired surrogates at the boundary
+    /// with a supplementary code point,
+    /// like concatenating ill-formed UTF-16 strings effectively would.
+    #[inline]
+    pub fn push_wtf8(&mut self, other: &Wtf8) {
+        match (
+            (&*self).final_lead_surrogate(),
+            other.initial_trail_surrogate(),
+        ) {
+            // Replace newly paired surrogates by a supplementary code point.
+            (Some(lead), Some(trail)) => {
+                let len_without_lead_surrogate = self.len() - 3;
+                self.bytes.truncate(len_without_lead_surrogate);
+                let other_without_trail_surrogate = &other.bytes()[3..];
+                // 4 bytes for the supplementary code point
+                self.bytes.reserve(4 + other_without_trail_surrogate.len());
+                self.push_char(decode_surrogate_pair(lead, trail));
+                self.bytes.extend_from_slice(other_without_trail_surrogate);
+            }
+            _ => self.bytes.extend_from_slice(&other.bytes()),
+        }
     }
 
     /// Append a Unicode scalar value at the end of the string.
@@ -156,6 +205,7 @@ impl Wtf8Buf {
     /// the original WTF-8 string is returned instead.
     pub fn into_string(self) -> Result<String, IntoStringError> {
         match self.next_surrogate(0) {
+            // Safety: no surrogates, therefore this is UTF-8.
             None => Ok(unsafe { String::from_utf8_unchecked(self.bytes) }),
             Some((valid_up_to, _)) => Err(IntoStringError {
                 wtf8: self,
@@ -177,6 +227,7 @@ impl Wtf8Buf {
                     pos = surrogate_pos + 3;
                     self.bytes[surrogate_pos..pos].copy_from_slice("\u{FFFD}".as_bytes());
                 }
+                // Safety: No surrogates, so UTF-8 is guaranteed.
                 None => return unsafe { String::from_utf8_unchecked(self.bytes) },
             }
         }
@@ -185,12 +236,14 @@ impl Wtf8Buf {
     /// Converts this `Wtf8Buf` into a boxed `Wtf8`.
     #[inline]
     pub fn into_box(self) -> Box<Wtf8> {
-        unsafe { mem::transmute(self.bytes.into_boxed_slice()) }
+        // Safety: type layouts match.
+        unsafe { Box::from_raw(Box::into_raw(self.bytes.into_boxed_slice()) as *mut Wtf8) }
     }
 
     /// Converts a `Box<Wtf8>` into a `Wtf8Buf`.
     pub fn from_box(boxed: Box<Wtf8>) -> Wtf8Buf {
-        let bytes: Box<[u8]> = unsafe { mem::transmute(boxed) };
+        // Safety: type layouts are the same.
+        let bytes: Box<[u8]> = unsafe { Box::from_raw(Box::into_raw(boxed) as *mut [u8]) };
         Wtf8Buf {
             bytes: bytes.into_vec(),
         }
@@ -222,6 +275,7 @@ impl Wtf8Buf {
         #[inline]
         fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> &mut [u8] {
             let len = len_utf8(code);
+            #[allow(clippy::redundant_slicing)]
             match (len, &mut dst[..]) {
                 (1, [a, ..]) => {
                     *a = code as u8;
@@ -324,6 +378,15 @@ impl BorrowMut<Wtf8> for Wtf8Buf {
     }
 }
 
+impl FromStr for Wtf8Buf {
+    type Err = Infallible;
+
+    #[inline]
+    fn from_str(s: &str) -> Result<Self, Infallible> {
+        Ok(Wtf8Buf::from_str(s))
+    }
+}
+
 impl ToOwned for Wtf8 {
     type Owned = Wtf8Buf;
 
@@ -347,6 +410,46 @@ impl FromIterator<CodePoint> for Wtf8Buf {
     }
 }
 
+impl FromIterator<char> for Wtf8Buf {
+    fn from_iter<T: IntoIterator<Item = char>>(iter: T) -> Wtf8Buf {
+        let mut string = Wtf8Buf::new();
+        string.extend(iter);
+        string
+    }
+}
+
+impl<'a> FromIterator<&'a Wtf8> for Wtf8Buf {
+    fn from_iter<T: IntoIterator<Item = &'a Wtf8>>(iter: T) -> Wtf8Buf {
+        let mut string = Wtf8Buf::new();
+        string.extend(iter);
+        string
+    }
+}
+
+impl<'a> FromIterator<&'a str> for Wtf8Buf {
+    fn from_iter<T: IntoIterator<Item = &'a str>>(iter: T) -> Wtf8Buf {
+        let mut string = Wtf8Buf::new();
+        string.extend(iter);
+        string
+    }
+}
+
+impl<'a> FromIterator<&'a CodePoint> for Wtf8Buf {
+    fn from_iter<T: IntoIterator<Item = &'a CodePoint>>(iter: T) -> Wtf8Buf {
+        let mut string = Wtf8Buf::new();
+        string.extend(iter);
+        string
+    }
+}
+
+impl<'a> FromIterator<&'a char> for Wtf8Buf {
+    fn from_iter<T: IntoIterator<Item = &'a char>>(iter: T) -> Wtf8Buf {
+        let mut string = Wtf8Buf::new();
+        string.extend(iter);
+        string
+    }
+}
+
 /// Append code points from an iterator to the string.
 ///
 /// This replaces surrogate code point pairs with supplementary code points,
@@ -357,7 +460,56 @@ impl Extend<CodePoint> for Wtf8Buf {
         let (low, _high) = iterator.size_hint();
         // Lower bound of one byte per code point (ASCII only)
         self.bytes.reserve(low);
-        iterator.for_each(move |code_point| self.push(code_point));
+        for code_point in iterator {
+            self.push(code_point);
+        }
+    }
+}
+
+impl Extend<char> for Wtf8Buf {
+    fn extend<T: IntoIterator<Item = char>>(&mut self, iter: T) {
+        let iterator = iter.into_iter();
+        let (low, _high) = iterator.size_hint();
+        self.bytes.reserve(low);
+        for c in iterator {
+            self.push_char(c);
+        }
+    }
+}
+
+impl<'a> Extend<&'a str> for Wtf8Buf {
+    fn extend<T: IntoIterator<Item = &'a str>>(&mut self, iter: T) {
+        let iterator = iter.into_iter();
+        let (low, _high) = iterator.size_hint();
+        self.bytes.reserve(low);
+        for c in iterator {
+            self.push_str(c);
+        }
+    }
+}
+
+impl<'a> Extend<&'a Wtf8> for Wtf8Buf {
+    fn extend<T: IntoIterator<Item = &'a Wtf8>>(&mut self, iter: T) {
+        let iterator = iter.into_iter();
+        let (low, _high) = iterator.size_hint();
+        self.bytes.reserve(low);
+        for c in iterator {
+            self.push_wtf8(c);
+        }
+    }
+}
+
+impl<'a> Extend<&'a CodePoint> for Wtf8Buf {
+    #[inline]
+    fn extend<T: IntoIterator<Item = &'a CodePoint>>(&mut self, iter: T) {
+        self.extend(iter.into_iter().copied())
+    }
+}
+
+impl<'a> Extend<&'a char> for Wtf8Buf {
+    #[inline]
+    fn extend<T: IntoIterator<Item = &'a char>>(&mut self, iter: T) {
+        self.extend(iter.into_iter().copied())
     }
 }
 
