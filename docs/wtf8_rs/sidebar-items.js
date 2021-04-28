@@ -1,1 +1,0 @@
-initSidebarItems({"mod":[["codepoint","A Unicode code point: from U+0000 to U+10FFFF."],["wtf8","A WTF-8 slice."],["wtf8buf","A WTF-8 dynamically sized, growable string."]],"struct":[["CodePoint","A Unicode code point: from U+0000 to U+10FFFF."],["Wtf8","A WTF-8 slice."],["Wtf8Buf","A WTF-8 dynamically sized, growable string."]]});

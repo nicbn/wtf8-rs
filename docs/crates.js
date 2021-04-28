@@ -1,1 +1,0 @@
-window.ALL_CRATES = ["wtf8_rs"];

@@ -1,8 +1,12 @@
 [package]
 name = "wtf8-rs"
 version = "0.0.0"
+description = "Implementation of the WTF-8 encoding."
 authors = ["nicbn <nicolas.nattis@gmail.com>"]
+repository = "https://github.com/nicbn/wtf8-rs"
+readme = "README.md"
 edition = "2018"
 license = "MIT OR Apache-2.0"
+keywords = ["unicode"]
 
 [dependencies]

@@ -1,3 +1,0 @@
-(function() {var implementors = {};
-implementors["wtf8_rs"] = [{"text":"impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/convert/trait.AsRef.html\" title=\"trait core::convert::AsRef\">AsRef</a>&lt;<a class=\"struct\" href=\"wtf8_rs/struct.Wtf8.html\" title=\"struct wtf8_rs::Wtf8\">Wtf8</a>&gt; for <a class=\"struct\" href=\"wtf8_rs/struct.Wtf8Buf.html\" title=\"struct wtf8_rs::Wtf8Buf\">Wtf8Buf</a>","synthetic":false,"types":["wtf8_rs::wtf8buf::Wtf8Buf"]}];
-if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
