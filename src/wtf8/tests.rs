@@ -81,6 +81,36 @@ fn wtf8_code_points() {
 }
 
 #[test]
+fn wtf8_valid_str_chunks() {
+    fn c(value: u32) -> CodePoint {
+        CodePoint::from_u32(value).unwrap()
+    }
+    fn vs(string: &Wtf8Buf) -> Vec<(&str, Option<u16>)> {
+        string
+            .valid_str_chunks()
+            .map(|(a, b)| (a, b.map(|s| s.to_u16())))
+            .collect::<Vec<_>>()
+    }
+    let mut string = Wtf8Buf::new();
+    string.push(c(0xD83D));
+    assert_eq!(vs(&string), [("", Some(0xD83D))]);
+    string.clear();
+    assert_eq!(vs(&string), []);
+    string.push_str("Resumé ");
+    assert_eq!(vs(&string), [("Resumé ", None)]);
+    string.push(c(0xD83D));
+    assert_eq!(vs(&string), [("Resumé ", Some(0xD83D))]);
+    string.push(c(0xDCA9));
+    assert_eq!(vs(&string), [("Resumé 💩", None)]);
+    string.push(c(0xDCA9));
+    assert_eq!(vs(&string), [("Resumé 💩", Some(0xDCA9))]);
+    string.push(c(0xDCA7));
+    assert_eq!(vs(&string), [("Resumé 💩", Some(0xDCA9)), ("", Some(0xDCA7))]);
+    string.push_str("香蕉");
+    assert_eq!(vs(&string), [("Resumé 💩", Some(0xDCA9)), ("", Some(0xDCA7)), ("香蕉", None)]);
+}
+
+#[test]
 fn wtf8_as_str() {
     assert_eq!(Wtf8::new("").to_str(), Ok(""));
     assert_eq!(Wtf8::new("aé 💩").to_str(), Ok("aé 💩"));

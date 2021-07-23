@@ -1,7 +1,7 @@
 //! A WTF-8 slice.
 
 use crate::wtf8buf::Wtf8Buf;
-use crate::{codepoint, decode_surrogate, CodePoint};
+use crate::{codepoint, decode_surrogate, CodePoint, Surrogate};
 use alloc::borrow::Cow;
 use alloc::boxed::Box;
 use alloc::rc::Rc;
@@ -23,6 +23,14 @@ pub struct Wtf8 {
 }
 
 impl Wtf8 {
+    /// Only safe if `bytes` contains valid WTF-8.
+    #[inline]
+    pub(crate) unsafe fn from_bytes_unchecked(bytes: &[u8]) -> &Self {
+        // Safety: the cast is sound because repr(transparent), matching the layout of [u8].
+        // As long as `bytes` is valid WTF-8, the type invariant is upheld.
+        &*(bytes as *const [u8] as *const Wtf8)
+    }
+    
     #[inline]
     pub(crate) fn bytes(&self) -> &[u8] {
         &self.bytes
@@ -65,6 +73,20 @@ impl Wtf8 {
     pub fn code_points(&self) -> CodePoints<'_> {
         CodePoints {
             bytes: self.bytes.iter(),
+        }
+    }
+
+    /// Returns an iterator for the sections of the string that form valid
+    /// [str]s, and the unpaired [Surrogate]s that break those chunks up.
+    ///
+    /// Every chunk will be followed by the unpaired surrogate that ended
+    /// it, or by `None` if the chunk reaches to the end of the string.
+    /// If multiple unpaired surrogates appear in a row, or if the `Wtf8`
+    /// begins with an unpaired surrogate, the `str` slice will be empty.
+    #[inline]
+    pub fn valid_str_chunks(&self) -> ValidStrChunks<'_> {
+        ValidStrChunks {
+            wtf8: self,
         }
     }
 
@@ -257,7 +279,7 @@ impl Wtf8 {
     }
 
     #[inline]
-    pub(crate) fn next_surrogate(&self, mut pos: usize) -> Option<(usize, u16)> {
+    pub(crate) fn next_surrogate(&self, mut pos: usize) -> Option<(usize, Surrogate)> {
         let mut iter = self.bytes[pos..].iter();
         loop {
             let b = *iter.next()?;
@@ -269,7 +291,11 @@ impl Wtf8 {
             } else if b == 0xED {
                 match (iter.next(), iter.next()) {
                     (Some(&b2), Some(&b3)) if b2 >= 0xA0 => {
-                        return Some((pos, decode_surrogate(b2, b3)));
+                        let surrogate = decode_surrogate(b2, b3);
+                        // Safety: these bytes are known to be valid WTF-8, and in valid WTF-8
+                        // a three-byte sequence starting with 0xED is guaranteed to form a
+                        // valid surrogate value when decoded.
+                        return Some((pos, unsafe { Surrogate::from_u16_unchecked(surrogate) }));
                     }
                     _ => pos += 3,
                 }
@@ -325,7 +351,7 @@ impl fmt::Debug for Wtf8 {
             write_str_escaped(formatter, unsafe {
                 str::from_utf8_unchecked(&self.bytes[pos..surrogate_pos])
             })?;
-            write!(formatter, "\\u{{{:x}}}", surrogate)?;
+            write!(formatter, "\\u{{{:x}}}", surrogate.to_u16())?;
             pos = surrogate_pos + 3;
         }
         // Safety: there are no surrogates, so it is UTF-8.
@@ -388,9 +414,8 @@ impl<T: Wtf8Index> Index<T> for Wtf8 {
 impl AsRef<Wtf8> for str {
     #[inline]
     fn as_ref(&self) -> &Wtf8 {
-        // Safety: the cast is sound because repr(transparent), matching the layout of str.
-        // UTF-8 is a subset of WTF-8, so type invariants are never violated.
-        unsafe { &*(self as *const str as *const Wtf8) }
+        // Safety: UTF-8 is a subset of WTF-8.
+        unsafe { Wtf8::from_bytes_unchecked(self.as_bytes()) }
     }
 }
 
@@ -580,6 +605,52 @@ impl Iterator for CodePoints<'_> {
     }
 }
 impl FusedIterator for CodePoints<'_> {}
+
+/// Iterator over the valid slices of UTF-8 in a `Wtf8` buffer.
+///
+/// Returned by the [`valid_str_chunks`] method of [Wtf8].
+/// See its documentation for more.
+///
+/// [`valid_str_chunks`]: Wtf8::valid_str_chunks
+pub struct ValidStrChunks<'a> {
+    wtf8: &'a Wtf8,
+}
+impl<'a> Iterator for ValidStrChunks<'a> {
+    type Item = (&'a str, Option<Surrogate>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.wtf8.is_empty() {
+            None
+        } else if let Some((surrogate_pos, surrogate)) = self.wtf8.next_surrogate(0) {
+            let (valid_utf8, remainder) = self.wtf8.bytes().split_at(surrogate_pos);
+            
+            // Safety: there are no surrogates, so it is UTF-8.
+            let valid_utf8 = unsafe { str::from_utf8_unchecked(valid_utf8) };
+            let remainder = &remainder[3..];
+            
+            // Safety: As `remainder` came from a Wtf8, it is known to be valid WTF-8.
+            // Unpaired surrogates take up 3 bytes in WTF-8, so the slicing above maintains this.
+            self.wtf8 = unsafe { Wtf8::from_bytes_unchecked(remainder) };
+            
+            Some((valid_utf8, Some(surrogate)))
+        } else {
+            // Safety: there are no surrogates, so it is UTF-8.
+            let valid_utf8 = unsafe { str::from_utf8_unchecked(self.wtf8.bytes()) };
+            
+            self.wtf8 = Wtf8::new("");
+            
+            Some((valid_utf8, None))
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.wtf8.len();
+        let zero_or_one = (len > 0) as usize;
+        (zero_or_one, Some(len.saturating_add(2) / 3))
+    }
+}
+impl FusedIterator for ValidStrChunks<'_> {}
 
 /// An iterator for encoding potentially ill-formed UTF-16 from a WTF-8 input.
 pub struct EncodeUtf16<'a>(codepoint::EncodeUtf16<CodePoints<'a>>);
