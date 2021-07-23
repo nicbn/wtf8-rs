@@ -17,6 +17,9 @@ pub mod wtf8buf;
 pub use codepoint::CodePoint;
 
 #[doc(inline)]
+pub use codepoint::Surrogate;
+
+#[doc(inline)]
 pub use wtf8::Wtf8;
 
 #[doc(inline)]
