@@ -216,11 +216,24 @@ impl Surrogate {
         self.value.get()
     }
 
-    /// Returns `true` if the surrogate is a high surrogate (from U+D800 to U+DBFF)
-    /// and `false` if the surrogate is a low surrogate (from U+DC00 to U+DFFF).
+    /// Returns `true` if the surrogate is a high or "leading" surrogate (from U+D800 to U+DBFF)
+    /// and `false` if the surrogate is a low or "trailing" surrogate (from U+DC00 to U+DFFF).
     #[inline]
     pub fn is_high_surrogate(&self) -> bool {
-        matches!(self.value.get(), 0xD800..=0xDBFF)
+        self.value.get() < 0xDC00
+    }
+    
+    /// Gets the second and third bytes of the WTF-8 sequence
+    /// for this surrogate (the first is known to be 0xED).
+    #[inline]
+    pub(crate) fn get_bytes(&self) -> [u8; 2] {
+        const HEADER: u8 = 0b1000_0000;
+        const PAYLOAD: u8 = 0b0011_1111;
+        let value = self.value.get();
+        [
+            ((value >> 6) as u8 & PAYLOAD) | HEADER,
+            (value as u8 & PAYLOAD) | HEADER,
+        ]
     }
 }
 

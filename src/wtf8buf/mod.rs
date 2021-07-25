@@ -1,6 +1,6 @@
 //! A WTF-8 dynamically sized, growable string.
 
-use crate::{decode_surrogate, decode_surrogate_pair, CodePoint, Wtf8};
+use crate::{decode_surrogate, decode_surrogate_pair, CodePoint, Surrogate, Wtf8};
 use alloc::borrow::ToOwned;
 use alloc::boxed::Box;
 use alloc::string::String;
@@ -191,6 +191,27 @@ impl Wtf8Buf {
     #[inline]
     pub fn push_char(&mut self, c: char) {
         self.push_code_point_unchecked(CodePoint::from_char(c))
+    }
+
+    /// Append a surrogate at the end of the string.
+    ///
+    /// This replaces newly paired surrogates at the boundary
+    /// with a supplementary code point,
+    /// like concatenating ill-formed UTF-16 strings effectively would.
+    #[inline]
+    pub fn push_surrogate(&mut self, surrogate: Surrogate) {
+        if !surrogate.is_high_surrogate() {
+            if let Some(lead) = self.final_lead_surrogate() {
+                let len_without_lead_surrogate = self.len() - 3;
+                self.bytes.truncate(len_without_lead_surrogate);
+                self.push_char(decode_surrogate_pair(lead, surrogate.to_u16()));
+                return;
+            }
+        }
+
+        // No newly paired surrogates at the boundary.
+        self.bytes.push(0xED);
+        self.bytes.extend_from_slice(&surrogate.get_bytes());
     }
 
     /// Append a code point at the end of the string.
@@ -439,6 +460,14 @@ impl FromIterator<CodePoint> for Wtf8Buf {
     }
 }
 
+impl FromIterator<Surrogate> for Wtf8Buf {
+    fn from_iter<T: IntoIterator<Item = Surrogate>>(iter: T) -> Wtf8Buf {
+        let mut string = Wtf8Buf::new();
+        string.extend(iter);
+        string
+    }
+}
+
 impl FromIterator<char> for Wtf8Buf {
     fn from_iter<T: IntoIterator<Item = char>>(iter: T) -> Wtf8Buf {
         let mut string = Wtf8Buf::new();
@@ -471,6 +500,14 @@ impl<'a> FromIterator<&'a CodePoint> for Wtf8Buf {
     }
 }
 
+impl<'a> FromIterator<&'a Surrogate> for Wtf8Buf {
+    fn from_iter<T: IntoIterator<Item = &'a Surrogate>>(iter: T) -> Wtf8Buf {
+        let mut string = Wtf8Buf::new();
+        string.extend(iter);
+        string
+    }
+}
+
 impl<'a> FromIterator<&'a char> for Wtf8Buf {
     fn from_iter<T: IntoIterator<Item = &'a char>>(iter: T) -> Wtf8Buf {
         let mut string = Wtf8Buf::new();
@@ -491,6 +528,18 @@ impl Extend<CodePoint> for Wtf8Buf {
         self.bytes.reserve(low);
         for code_point in iterator {
             self.push(code_point);
+        }
+    }
+}
+
+impl Extend<Surrogate> for Wtf8Buf {
+    fn extend<T: IntoIterator<Item = Surrogate>>(&mut self, iter: T) {
+        let iterator = iter.into_iter();
+        let (low, _high) = iterator.size_hint();
+        // Lower bound of two bytes per surrogate (all form valid pairs)
+        self.bytes.reserve(low * 2);
+        for surrogate in iterator {
+            self.push_surrogate(surrogate);
         }
     }
 }
@@ -531,6 +580,13 @@ impl<'a> Extend<&'a Wtf8> for Wtf8Buf {
 impl<'a> Extend<&'a CodePoint> for Wtf8Buf {
     #[inline]
     fn extend<T: IntoIterator<Item = &'a CodePoint>>(&mut self, iter: T) {
+        self.extend(iter.into_iter().copied())
+    }
+}
+
+impl<'a> Extend<&'a Surrogate> for Wtf8Buf {
+    #[inline]
+    fn extend<T: IntoIterator<Item = &'a Surrogate>>(&mut self, iter: T) {
         self.extend(iter.into_iter().copied())
     }
 }
