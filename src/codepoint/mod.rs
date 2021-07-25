@@ -2,7 +2,6 @@
 
 use core::fmt;
 use core::iter::{FusedIterator, Peekable};
-use core::num::NonZeroU16;
 
 #[cfg(test)]
 mod tests;
@@ -58,16 +57,6 @@ impl CodePoint {
         }
     }
 
-    /// Creates a new `CodePoint` from a [Surrogate].
-    ///
-    /// Since all surrogates are code points, this always succeeds.
-    #[inline]
-    pub fn from_surrogate(value: Surrogate) -> CodePoint {
-        CodePoint {
-            value: value.to_u16() as u32,
-        }
-    }
-
     /// Returns the numeric value of the code point.
     #[inline]
     pub fn to_u32(&self) -> u32 {
@@ -79,9 +68,12 @@ impl CodePoint {
     /// Returns `None` if the code point is a surrogate (from U+D800 to U+DFFF).
     #[inline]
     pub fn to_char(&self) -> Option<char> {
-        match self.categorize() {
-            CodePointCategory::Scalar(c) => Some(c),
-            _ => None,
+        match self.value {
+            0xD800..=0xDFFF => None,
+            // Safety: value is known to be in char range, because it is not
+            // a surrogate, and is less than (#impl-Index<T>) as this is guaranteed
+            // by the type.
+            _ => Some(unsafe { char::from_u32_unchecked(self.value) }),
         }
     }
 
@@ -92,35 +84,6 @@ impl CodePoint {
     #[inline]
     pub fn to_char_lossy(&self) -> char {
         self.to_char().unwrap_or('\u{FFFD}')
-    }
-
-    /// Optionally returns a Unicode surrogate value for the code point.
-    ///
-    /// Returns `None` if the code point is not a surrogate (from U+D800 to U+DFFF).
-    #[inline]
-    pub fn to_surrogate(&self) -> Option<Surrogate> {
-        match self.categorize() {
-            CodePointCategory::Surrogate(s) => Some(s),
-            _ => None,
-        }
-    }
-
-    /// Returns a [CodePointCategory], categorizing the code point as a surrogate
-    /// or a valid Unicode scalar.
-    #[inline]
-    pub fn categorize(&self) -> CodePointCategory {
-        match self.value {
-            // Safety: value is known to be in surrogate range.
-            0xD800..=0xDFFF => CodePointCategory::Surrogate(unsafe {
-                Surrogate::from_u16_unchecked(self.value as u16)
-            }),
-            // Safety: value is known to be in char range, because it is not
-            // a surrogate, and is less than (#impl-Index<T>) as this is guaranteed
-            // by the type.
-            _ => CodePointCategory::Scalar(unsafe {
-                char::from_u32_unchecked(self.value)
-            }),
-        }
     }
 
     /// Decode potentially ill-formed UTF-16.
@@ -149,104 +112,6 @@ impl From<char> for CodePoint {
     fn from(c: char) -> Self {
         Self::from_char(c)
     }
-}
-
-impl From<Surrogate> for CodePoint {
-    #[inline]
-    fn from(s: Surrogate) -> Self {
-        Self::from_surrogate(s)
-    }
-}
-
-impl From<CodePointCategory> for CodePoint {
-    #[inline]
-    fn from(cat: CodePointCategory) -> Self {
-        match cat {
-            CodePointCategory::Scalar(c) => Self::from_char(c),
-            CodePointCategory::Surrogate(s) => Self::from_surrogate(s),
-        }
-    }
-}
-
-/// A Unicode high or low surrogate: from U+D800 to U+DFFF.
-#[derive(Eq, PartialEq, Ord, PartialOrd, Clone, Copy)]
-pub struct Surrogate {
-    // By using a non-zero u16 (which all surrogates are guaranteed to be),
-    // we allow Option<Surrogate>s to be packed into 2 bytes, among other
-    // optimizations.
-    value: NonZeroU16,
-}
-
-/// Format the code point as `U+` followed by four hexadecimal digits.
-/// Example: `U+D8F9`
-impl fmt::Debug for Surrogate {
-    #[inline]
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "U+{:04X}", self.value)
-    }
-}
-
-impl Surrogate {
-    /// Unsafely creates a new `Surrogate` without checking the value.
-    ///
-    /// # Safety
-    ///
-    /// Only safe if `value` is between 0xD800 and 0xDFFF, inclusive.
-    #[inline]
-    pub unsafe fn from_u16_unchecked(value: u16) -> Surrogate {
-        // Safety: if the value is >= 0xD800, it must be non-zero.
-        Surrogate { value: NonZeroU16::new_unchecked(value) }
-    }
-
-    /// Creates a new `Surrogate` if the value is a valid Unicode surrogate.
-    ///
-    /// Returns `None` if `value` is below 0xD800 or above 0xDFFF.
-    #[inline]
-    pub fn from_u16(value: u16) -> Option<Surrogate> {
-        match value {
-            // Safety: we have just checked the function invariant.
-            0xD800..=0xDFFF => Some(unsafe { Surrogate::from_u16_unchecked(value) }),
-            _ => None,
-        }
-    }
-
-    /// Returns the numeric value of the surrogate.
-    #[inline]
-    pub fn to_u16(&self) -> u16 {
-        self.value.get()
-    }
-
-    /// Returns `true` if the surrogate is a high or "leading" surrogate (from U+D800 to U+DBFF)
-    /// and `false` if the surrogate is a low or "trailing" surrogate (from U+DC00 to U+DFFF).
-    #[inline]
-    pub fn is_high_surrogate(&self) -> bool {
-        self.value.get() < 0xDC00
-    }
-    
-    /// Gets the second and third bytes of the WTF-8 sequence
-    /// for this surrogate (the first is known to be 0xED).
-    #[inline]
-    pub(crate) fn get_bytes(&self) -> [u8; 2] {
-        const HEADER: u8 = 0b1000_0000;
-        const PAYLOAD: u8 = 0b0011_1111;
-        let value = self.value.get();
-        [
-            ((value >> 6) as u8 & PAYLOAD) | HEADER,
-            (value as u8 & PAYLOAD) | HEADER,
-        ]
-    }
-}
-
-/// An enum that separates a Unicode code point into two options:
-/// valid Unicode scalar, or surrogate.
-///
-/// Returned from the [`categorize`] method on [CodePoint].
-///
-/// [`categorize`]: CodePoint::categorize
-#[derive(Eq, PartialEq, Ord, PartialOrd, Clone, Copy, Debug)]
-pub enum CodePointCategory {
-    Scalar(char),
-    Surrogate(Surrogate),
 }
 
 /// An iterator for decoding potentially ill-formed UTF-16.

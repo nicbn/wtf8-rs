@@ -84,45 +84,39 @@ fn wtf8_code_points() {
 }
 
 #[test]
-fn wtf8_valid_str_chunks() {
+fn wtf8_str_chunks() {
     fn c(value: u32) -> CodePoint {
         CodePoint::from_u32(value).unwrap()
     }
-    fn vs(string: &Wtf8Buf) -> Vec<(&str, Option<u16>)> {
-        string
-            .valid_str_chunks()
-            .map(|(a, b)| (a, b.map(|s| s.to_u16())))
-            .collect::<Vec<_>>()
+    fn sc(string: &Wtf8Buf) -> Vec<(&str, Option<u16>)> {
+        string.str_chunks().collect::<Vec<_>>()
     }
     let mut string = Wtf8Buf::new();
     string.push(c(0xD83D));
-    assert_eq!(vs(&string), [("", Some(0xD83D))]);
+    assert_eq!(sc(&string), [("", Some(0xD83D))]);
     string.clear();
-    assert_eq!(vs(&string), []);
+    assert_eq!(sc(&string), []);
     string.push_str("Resumé ");
-    assert_eq!(vs(&string), [("Resumé ", None)]);
+    assert_eq!(sc(&string), [("Resumé ", None)]);
     string.push(c(0xD83D));
-    assert_eq!(vs(&string), [("Resumé ", Some(0xD83D))]);
+    assert_eq!(sc(&string), [("Resumé ", Some(0xD83D))]);
     string.push(c(0xDCA9));
-    assert_eq!(vs(&string), [("Resumé 💩", None)]);
+    assert_eq!(sc(&string), [("Resumé 💩", None)]);
     string.push(c(0xDCA9));
-    assert_eq!(vs(&string), [("Resumé 💩", Some(0xDCA9))]);
+    assert_eq!(sc(&string), [("Resumé 💩", Some(0xDCA9))]);
     string.push(c(0xDCA7));
-    assert_eq!(vs(&string), [("Resumé 💩", Some(0xDCA9)), ("", Some(0xDCA7))]);
+    assert_eq!(sc(&string), [("Resumé 💩", Some(0xDCA9)), ("", Some(0xDCA7))]);
     string.push_str("香蕉");
-    assert_eq!(vs(&string), [("Resumé 💩", Some(0xDCA9)), ("", Some(0xDCA7)), ("香蕉", None)]);
+    assert_eq!(sc(&string), [("Resumé 💩", Some(0xDCA9)), ("", Some(0xDCA7)), ("香蕉", None)]);
 }
 
 #[test]
-fn wtf8_valid_str_chunks_mut() {
+fn wtf8_str_chunks_mut() {
     fn c(value: u32) -> CodePoint {
         CodePoint::from_u32(value).unwrap()
     }
-    fn vs(string: &Wtf8Buf) -> Vec<(&str, Option<u16>)> {
-        string
-            .valid_str_chunks()
-            .map(|(a, b)| (a, b.map(|s| s.to_u16())))
-            .collect::<Vec<_>>()
+    fn sc(string: &Wtf8Buf) -> Vec<(&str, Option<u16>)> {
+        string.str_chunks().collect::<Vec<_>>()
     }
     let mut string = Wtf8Buf::from_str("The File Path is 'C:/");
     string.push(c(0xD83D));
@@ -132,12 +126,12 @@ fn wtf8_valid_str_chunks_mut() {
     string.push_str("XYZ");
     string.push(c(0xDF0A));
     string.push_str("'. Nice! 😊");
-    for (text, _) in string.valid_str_chunks_mut() {
+    for (text, _) in string.str_chunks_mut() {
         let (left, right) = text.split_at_mut(text.len() / 2);
         left.make_ascii_uppercase();
         right.make_ascii_lowercase();
     }
-    assert_eq!(vs(&string), [
+    assert_eq!(sc(&string), [
         ("THE FILE Path is 'c:/", Some(0xD83D)),
         ("ABcd", Some(0xDD89)),
         ("", Some(0xDD0A)),

@@ -1,7 +1,7 @@
 //! A WTF-8 slice.
 
 use crate::wtf8buf::Wtf8Buf;
-use crate::{codepoint, decode_surrogate, CodePoint, Surrogate};
+use crate::{codepoint, decode_surrogate, CodePoint};
 use alloc::borrow::Cow;
 use alloc::boxed::Box;
 use alloc::rc::Rc;
@@ -97,21 +97,21 @@ impl Wtf8 {
     }
 
     /// Returns an iterator for the sections of the string that form valid
-    /// [str]s, and the unpaired [Surrogate]s that break those chunks up.
+    /// [str]s, and the unpaired surrogates that break those chunks up.
     ///
     /// Every chunk will be followed by the unpaired surrogate that ended
     /// it, or by `None` if the chunk reaches to the end of the string.
     /// If multiple unpaired surrogates appear in a row, or if the `Wtf8`
     /// begins with an unpaired surrogate, the `str` slice will be empty.
     #[inline]
-    pub fn valid_str_chunks(&self) -> ValidStrChunks<'_> {
-        ValidStrChunks {
+    pub fn str_chunks(&self) -> StrChunks<'_> {
+        StrChunks {
             wtf8: self,
         }
     }
 
     /// Returns an iterator for the mutable sections of the string that
-    /// form valid [str]s, and the unpaired [Surrogate]s that break those
+    /// form valid [str]s, and the unpaired surrogates that break those
     /// chunks up.
     ///
     /// Every chunk will be followed by the unpaired surrogate that ended
@@ -119,8 +119,8 @@ impl Wtf8 {
     /// If multiple unpaired surrogates appear in a row, or if the `Wtf8`
     /// begins with an unpaired surrogate, the `str` slice will be empty.
     #[inline]
-    pub fn valid_str_chunks_mut(&mut self) -> ValidStrChunksMut<'_> {
-        ValidStrChunksMut {
+    pub fn str_chunks_mut(&mut self) -> StrChunksMut<'_> {
+        StrChunksMut {
             wtf8: self,
         }
     }
@@ -314,7 +314,7 @@ impl Wtf8 {
     }
 
     #[inline]
-    pub(crate) fn next_surrogate(&self, mut pos: usize) -> Option<(usize, Surrogate)> {
+    pub(crate) fn next_surrogate(&self, mut pos: usize) -> Option<(usize, u16)> {
         let mut iter = self.bytes[pos..].iter();
         loop {
             let b = *iter.next()?;
@@ -327,10 +327,7 @@ impl Wtf8 {
                 match (iter.next(), iter.next()) {
                     (Some(&b2), Some(&b3)) if b2 >= 0xA0 => {
                         let surrogate = decode_surrogate(b2, b3);
-                        // Safety: in WTF-8 a three-byte sequence where byte 1 = 0xED
-                        // and byte 2 >= 0xA0 is guaranteed to form a valid surrogate
-                        // value when decoded.
-                        return Some((pos, unsafe { Surrogate::from_u16_unchecked(surrogate) }));
+                        return Some((pos, surrogate));
                     }
                     _ => pos += 3,
                 }
@@ -386,7 +383,7 @@ impl fmt::Debug for Wtf8 {
             write_str_escaped(formatter, unsafe {
                 str::from_utf8_unchecked(&self.bytes[pos..surrogate_pos])
             })?;
-            write!(formatter, "\\u{{{:x}}}", surrogate.to_u16())?;
+            write!(formatter, "\\u{{{:x}}}", surrogate)?;
             pos = surrogate_pos + 3;
         }
         // Safety: there are no surrogates, so it is UTF-8.
@@ -667,15 +664,15 @@ impl FusedIterator for CodePoints<'_> {}
 
 /// Iterator over the valid slices of UTF-8 in a `Wtf8` buffer.
 ///
-/// Returned by the [`valid_str_chunks`] method of [Wtf8].
+/// Returned by the [`str_chunks`] method of [Wtf8].
 /// See its documentation for more.
 ///
-/// [`valid_str_chunks`]: Wtf8::valid_str_chunks
-pub struct ValidStrChunks<'a> {
+/// [`str_chunks`]: Wtf8::str_chunks
+pub struct StrChunks<'a> {
     wtf8: &'a Wtf8,
 }
-impl<'a> Iterator for ValidStrChunks<'a> {
-    type Item = (&'a str, Option<Surrogate>);
+impl<'a> Iterator for StrChunks<'a> {
+    type Item = (&'a str, Option<u16>);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.wtf8.is_empty() {
@@ -710,19 +707,19 @@ impl<'a> Iterator for ValidStrChunks<'a> {
         (zero_or_one, Some(len.saturating_add(2) / 3))
     }
 }
-impl FusedIterator for ValidStrChunks<'_> {}
+impl FusedIterator for StrChunks<'_> {}
 
 /// Iterator over the mutable valid slices of UTF-8 in a `Wtf8` buffer.
 ///
-/// Returned by the [`valid_str_chunks_mut`] method of [Wtf8].
+/// Returned by the [`str_chunks_mut`] method of [Wtf8].
 /// See its documentation for more.
 ///
-/// [`valid_str_chunks_mut`]: Wtf8::valid_str_chunks_mut
-pub struct ValidStrChunksMut<'a> {
+/// [`str_chunks_mut`]: Wtf8::str_chunks_mut
+pub struct StrChunksMut<'a> {
     wtf8: &'a mut Wtf8,
 }
-impl<'a> Iterator for ValidStrChunksMut<'a> {
-    type Item = (&'a mut str, Option<Surrogate>);
+impl<'a> Iterator for StrChunksMut<'a> {
+    type Item = (&'a mut str, Option<u16>);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.wtf8.is_empty() {
@@ -761,7 +758,7 @@ impl<'a> Iterator for ValidStrChunksMut<'a> {
         (zero_or_one, Some(len.saturating_add(2) / 3))
     }
 }
-impl FusedIterator for ValidStrChunksMut<'_> {}
+impl FusedIterator for StrChunksMut<'_> {}
 
 /// An iterator for encoding potentially ill-formed UTF-16 from a WTF-8 input.
 pub struct EncodeUtf16<'a>(codepoint::EncodeUtf16<CodePoints<'a>>);
