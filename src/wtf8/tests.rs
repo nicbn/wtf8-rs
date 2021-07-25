@@ -10,6 +10,9 @@ use alloc::vec::Vec;
 fn wtf8_from_str() {
     assert_eq!(&Wtf8::new("").bytes, b"");
     assert_eq!(&Wtf8::new("aé 💩").bytes, b"a\xC3\xA9 \xF0\x9F\x92\xA9");
+    let mut buffer = [97, 98, 99, 100];
+    let str = core::str::from_utf8_mut(&mut buffer).unwrap();
+    assert_eq!(&Wtf8::new_mut(str).bytes, b"abcd");
 }
 
 #[test]
@@ -108,6 +111,39 @@ fn wtf8_valid_str_chunks() {
     assert_eq!(vs(&string), [("Resumé 💩", Some(0xDCA9)), ("", Some(0xDCA7))]);
     string.push_str("香蕉");
     assert_eq!(vs(&string), [("Resumé 💩", Some(0xDCA9)), ("", Some(0xDCA7)), ("香蕉", None)]);
+}
+
+#[test]
+fn wtf8_valid_str_chunks_mut() {
+    fn c(value: u32) -> CodePoint {
+        CodePoint::from_u32(value).unwrap()
+    }
+    fn vs(string: &Wtf8Buf) -> Vec<(&str, Option<u16>)> {
+        string
+            .valid_str_chunks()
+            .map(|(a, b)| (a, b.map(|s| s.to_u16())))
+            .collect::<Vec<_>>()
+    }
+    let mut string = Wtf8Buf::from_str("The File Path is 'C:/");
+    string.push(c(0xD83D));
+    string.push_str("abcd");
+    string.push(c(0xDD89));
+    string.push(c(0xDD0A));
+    string.push_str("XYZ");
+    string.push(c(0xDF0A));
+    string.push_str("'. Nice! 😊");
+    for (text, _) in string.valid_str_chunks_mut() {
+        let (left, right) = text.split_at_mut(text.len() / 2);
+        left.make_ascii_uppercase();
+        right.make_ascii_lowercase();
+    }
+    assert_eq!(vs(&string), [
+        ("THE FILE Path is 'c:/", Some(0xD83D)),
+        ("ABcd", Some(0xDD89)),
+        ("", Some(0xDD0A)),
+        ("Xyz", Some(0xDF0A)),
+        ("'. NICe! 😊", None),
+    ]);
 }
 
 #[test]
