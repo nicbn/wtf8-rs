@@ -478,7 +478,7 @@ impl ToStrError {
     /// Returns the index in the given string up to which valid UTF-8 was
     /// verified.
     ///
-    /// It is the maximum index such that `from_bytes(&input[..index])` would
+    /// It is the maximum index such that `wstr[..index].to_str()` would
     /// return `Ok(_)`.
     #[inline]
     pub fn valid_up_to(&self) -> usize {

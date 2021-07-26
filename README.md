@@ -2,7 +2,7 @@
 
 Implementation of [the WTF-8 encoding](https://simonsapin.github.io/wtf-8/).
 
-[![crates.io](https://img.shields.io/crates/v/wtf8-rs.svg)](https://crates.io/crates/wtf8-rs) [![crates.io](https://docs.rs/wtf8-rs/badge.svg)](https://docs.rs/wtf8-rs)
+[![crates.io](https://img.shields.io/crates/v/wtf8-rs.svg)](https://crates.io/crates/wtf8-rs) [![docs.rs](https://docs.rs/wtf8-rs/badge.svg)](https://docs.rs/wtf8-rs)
 
 > WTF-8 is a hack intended to be used internally in self-contained systems with components that need to support potentially ill-formed UTF-16 for legacy reasons.
 >

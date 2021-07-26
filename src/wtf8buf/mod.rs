@@ -183,7 +183,7 @@ impl Wtf8Buf {
                 self.push_char(decode_surrogate_pair(lead, trail));
                 self.bytes.extend_from_slice(other_without_trail_surrogate);
             }
-            _ => self.bytes.extend_from_slice(&other.bytes()),
+            _ => self.bytes.extend_from_slice(other.bytes()),
         }
     }
 
@@ -564,7 +564,7 @@ impl IntoStringError {
     /// Returns the index in the given string up to which valid UTF-8 was
     /// verified.
     ///
-    /// It is the maximum index such that `from_bytes(&input[..index])` would
+    /// It is the maximum index such that `wstr[..index].to_str()` would
     /// return `Ok(_)`.
     #[inline]
     pub fn valid_up_to(&self) -> usize {
