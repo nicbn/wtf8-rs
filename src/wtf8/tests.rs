@@ -1,5 +1,3 @@
-#![allow(clippy::unnecessary_operation)]
-
 use crate::*;
 use alloc::borrow::Cow;
 use alloc::string::String;
@@ -26,7 +24,7 @@ fn wtf8_slice() {
 #[test]
 #[should_panic]
 fn wtf8_slice_not_code_point_boundary() {
-    &Wtf8::new("aé 💩")[2..4];
+    let _ = &Wtf8::new("aé 💩")[2..4];
 }
 
 #[test]
@@ -37,7 +35,7 @@ fn wtf8_slice_from() {
 #[test]
 #[should_panic]
 fn wtf8_slice_from_not_code_point_boundary() {
-    &Wtf8::new("aé 💩")[2..];
+    let _ = &Wtf8::new("aé 💩")[2..];
 }
 
 #[test]
@@ -48,7 +46,7 @@ fn wtf8_slice_to() {
 #[test]
 #[should_panic]
 fn wtf8_slice_to_not_code_point_boundary() {
-    &Wtf8::new("aé 💩")[5..];
+    let _ = &Wtf8::new("aé 💩")[5..];
 }
 
 #[test]
@@ -113,6 +111,16 @@ fn wtf8_display() {
     let mut string = Wtf8Buf::from_str("aé 💩");
     string.push(CodePoint::from_u32(0xD800).unwrap());
     assert_eq!("aé 💩�", d(string.bytes()));
+}
+
+#[test]
+fn wtf8_chunks() {
+    let mut string = Wtf8Buf::from_str("aé 💩");
+    string.push(CodePoint::from_u32(0xD800).unwrap());
+    let mut c = string.chunks();
+    assert_eq!(c.next(), Some(Wtf8Chunk::Utf8("aé 💩")));
+    assert_eq!(c.next(), Some(Wtf8Chunk::UnpairedSurrogate(0xD800)));
+    assert!(c.next().is_none());
 }
 
 #[test]

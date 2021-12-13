@@ -233,13 +233,15 @@ impl Wtf8Buf {
     /// (that is, if the string contains surrogates),
     /// the original WTF-8 string is returned instead.
     pub fn into_string(self) -> Result<String, IntoStringError> {
-        match self.next_surrogate(0) {
-            // Safety: no surrogates, therefore this is UTF-8.
-            None => Ok(unsafe { String::from_utf8_unchecked(self.bytes) }),
-            Some((valid_up_to, _)) => Err(IntoStringError {
+        let chunks = self.chunks();
+
+        match chunks.next_surrogate() {
+            Some(position) => Err(IntoStringError {
                 wtf8: self,
-                valid_up_to,
+                valid_up_to: position,
             }),
+            // Safety: No surrogates, so UTF-8 is guaranteed.
+            None => unsafe { Ok(String::from_utf8_unchecked(self.bytes)) },
         }
     }
 
@@ -248,17 +250,14 @@ impl Wtf8Buf {
     /// This does not copy the data (but may overwrite parts of it in place).
     ///
     /// Surrogates are replaced with `"\u{FFFD}"` (the replacement character “�”)
-    pub fn into_string_lossy(mut self) -> String {
-        let mut pos = 0;
-        loop {
-            match self.next_surrogate(pos) {
-                Some((surrogate_pos, _)) => {
-                    pos = surrogate_pos + 3;
-                    self.bytes[surrogate_pos..pos].copy_from_slice("\u{FFFD}".as_bytes());
-                }
-                // Safety: No surrogates, so UTF-8 is guaranteed.
-                None => return unsafe { String::from_utf8_unchecked(self.bytes) },
-            }
+    pub fn into_string_lossy(self) -> String {
+        let chunks = self.chunks();
+
+        if chunks.next_surrogate().is_none() {
+            // Safety: No surrogates, so UTF-8 is guaranteed.
+            unsafe { String::from_utf8_unchecked(self.bytes) }
+        } else {
+            self.to_string_lossy().into_owned()
         }
     }
 
