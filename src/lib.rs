@@ -17,7 +17,7 @@ pub mod wtf8buf;
 pub use codepoint::CodePoint;
 
 #[doc(inline)]
-pub use wtf8::Wtf8;
+pub use wtf8::{Wtf8, Wtf8Chunk};
 
 #[doc(inline)]
 pub use wtf8buf::Wtf8Buf;

@@ -5,7 +5,6 @@ use crate::{codepoint, decode_surrogate, CodePoint};
 use alloc::borrow::Cow;
 use alloc::boxed::Box;
 use alloc::rc::Rc;
-use alloc::string::String;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::iter::FusedIterator;
@@ -68,18 +67,37 @@ impl Wtf8 {
         }
     }
 
-    /// Tries to convert the string to UTF-8 and return a `&str` slice.
+    /// Tries to convert the string to UTF-8 and return a [`&str`](prim@str) slice.
     ///
     /// Returns `Err(_)` if the string contains surrogates.
     ///
     /// This does not copy the data.
-    #[inline]
     pub fn to_str(&self) -> Result<&str, ToStrError> {
-        match self.next_surrogate(0) {
-            Some((valid_up_to, _)) => Err(ToStrError { valid_up_to }),
-            // Safety: there are no surrogates, therefore the string is UTF-8.
-            None => Ok(unsafe { str::from_utf8_unchecked(&self.bytes) }),
+        let mut chunks = self.chunks();
+
+        let x = match chunks.next() {
+            Some(Wtf8Chunk::Utf8(str)) => str,
+            Some(Wtf8Chunk::UnpairedSurrogate(_)) => return Err(ToStrError { valid_up_to: 0 }),
+            None => return Ok(""),
+        };
+
+        if chunks.next().is_some() {
+            return Err(ToStrError {
+                valid_up_to: x.len(),
+            });
         }
+
+        Ok(x)
+    }
+
+    /// Converts this string into a iterator of [`Wtf8Chunk`].
+    ///
+    /// The resulting iterator will intercalate [`Utf8`](Wtf8Chunk::Utf8) chunks
+    /// with one or more [`UnpairedSurrogate`](Wtf8Chunk::UnpairedSurrogate) and
+    /// all contained codepoints can be recovered from it.
+    #[inline]
+    pub fn chunks(&self) -> Chunks {
+        Chunks(&self.bytes)
     }
 
     /// Lossily converts the string to UTF-8.
@@ -88,32 +106,15 @@ impl Wtf8 {
     /// Surrogates are replaced with `"\u{FFFD}"` (the replacement character “�”).
     ///
     /// This only copies the data if necessary (if it contains any surrogate).
-    #[inline]
     pub fn to_string_lossy(&self) -> Cow<str> {
-        let surrogate_pos = match self.next_surrogate(0) {
-            // Safety: there are no surrogates, therefore the string is UTF-8.
-            None => return Cow::Borrowed(unsafe { str::from_utf8_unchecked(&self.bytes) }),
-            Some((pos, _)) => pos,
-        };
-        let wtf8_bytes = &self.bytes;
-        let mut utf8_bytes = Vec::with_capacity(self.len());
-        utf8_bytes.extend_from_slice(&wtf8_bytes[..surrogate_pos]);
-        utf8_bytes.extend_from_slice("\u{FFFD}".as_bytes());
-        let mut pos = surrogate_pos + 3;
-        loop {
-            match self.next_surrogate(pos) {
-                Some((surrogate_pos, _)) => {
-                    utf8_bytes.extend_from_slice(&wtf8_bytes[pos..surrogate_pos]);
-                    utf8_bytes.extend_from_slice("\u{FFFD}".as_bytes());
-                    pos = surrogate_pos + 3;
-                }
-                None => {
-                    utf8_bytes.extend_from_slice(&wtf8_bytes[pos..]);
-                    // Safety: there are no surrogates, therefore the string is UTF-8.
-                    return Cow::Owned(unsafe { String::from_utf8_unchecked(utf8_bytes) });
-                }
-            }
+        let mut chunks = self.chunks();
+
+        if chunks.next_surrogate().is_none() {
+            return Cow::Borrowed(chunks.next().and_then(Wtf8Chunk::utf8).unwrap_or(""));
         }
+
+        let chunks: Vec<_> = chunks.map(|a| a.utf8().unwrap_or("\u{FFFD}")).collect();
+        Cow::Owned(chunks.join(""))
     }
 
     /// Returns a slice of the given string for the byte range.
@@ -255,36 +256,6 @@ impl Wtf8 {
             _ => None,
         }
     }
-
-    #[inline]
-    pub(crate) fn next_surrogate(&self, mut pos: usize) -> Option<(usize, u16)> {
-        let mut iter = self.bytes[pos..].iter();
-        loop {
-            let b = *iter.next()?;
-            if b < 0x80 {
-                pos += 1;
-            } else if b < 0xE0 {
-                iter.next();
-                pos += 2;
-            } else if b == 0xED {
-                match (iter.next(), iter.next()) {
-                    (Some(&b2), Some(&b3)) if b2 >= 0xA0 => {
-                        return Some((pos, decode_surrogate(b2, b3)));
-                    }
-                    _ => pos += 3,
-                }
-            } else if b < 0xF0 {
-                iter.next();
-                iter.next();
-                pos += 3;
-            } else {
-                iter.next();
-                iter.next();
-                iter.next();
-                pos += 4;
-            }
-        }
-    }
 }
 
 impl From<&Wtf8> for Box<Wtf8> {
@@ -310,57 +281,32 @@ impl From<&Wtf8> for Arc<Wtf8> {
 
 impl fmt::Debug for Wtf8 {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fn write_str_escaped(f: &mut fmt::Formatter<'_>, s: &str) -> fmt::Result {
-            use core::fmt::Write;
-            for c in s.chars().flat_map(|c| c.escape_debug()) {
-                f.write_char(c)?
-            }
-            Ok(())
-        }
+        use core::fmt::Write;
 
         formatter.write_str("\"")?;
-        let mut pos = 0;
-        while let Some((surrogate_pos, surrogate)) = self.next_surrogate(pos) {
-            // Safety: there are no surrogates, so it is UTF-8.
-            write_str_escaped(formatter, unsafe {
-                str::from_utf8_unchecked(&self.bytes[pos..surrogate_pos])
-            })?;
-            write!(formatter, "\\u{{{:x}}}", surrogate)?;
-            pos = surrogate_pos + 3;
+
+        for c in self.chunks() {
+            match c {
+                Wtf8Chunk::Utf8(c) => {
+                    for ch in c.chars().flat_map(|x| x.escape_debug()) {
+                        formatter.write_char(ch)?;
+                    }
+                }
+                Wtf8Chunk::UnpairedSurrogate(e) => write!(formatter, "\\u{{{:x}}}", e)?,
+            }
         }
-        // Safety: there are no surrogates, so it is UTF-8.
-        write_str_escaped(formatter, unsafe {
-            str::from_utf8_unchecked(&self.bytes[pos..])
-        })?;
+
         formatter.write_str("\"")
     }
 }
 
 impl fmt::Display for Wtf8 {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let wtf8_bytes = &self.bytes;
-        let mut pos = 0;
-        loop {
-            match self.next_surrogate(pos) {
-                Some((surrogate_pos, _)) => {
-                    // Safety: there are no surrogates, so it is UTF-8.
-                    formatter.write_str(unsafe {
-                        str::from_utf8_unchecked(&wtf8_bytes[pos..surrogate_pos])
-                    })?;
-                    formatter.write_str("\u{FFFD}")?;
-                    pos = surrogate_pos + 3;
-                }
-                None => {
-                    // Safety: there are no surrogates, so it is UTF-8.
-                    let s = unsafe { str::from_utf8_unchecked(&wtf8_bytes[pos..]) };
-                    if pos == 0 {
-                        return s.fmt(formatter);
-                    } else {
-                        return formatter.write_str(s);
-                    }
-                }
-            }
+        for chunk in self.chunks() {
+            formatter.write_str(chunk.utf8().unwrap_or("\u{FFFD}"))?;
         }
+
+        Ok(())
     }
 }
 
@@ -398,9 +344,9 @@ impl AsRef<Wtf8> for str {
 ///
 /// This trait is sealed and not meant to be implemented by an user of this
 /// library.
+#[allow(clippy::missing_safety_doc)]
 pub unsafe trait Wtf8Index: fmt::Debug + Clone + private::Sealed {
     fn get(self, slice: &Wtf8) -> Option<&Wtf8>;
-    #[allow(clippy::missing_safety_doc)]
     unsafe fn get_unchecked(self, slice: *const Wtf8) -> *const Wtf8;
 }
 unsafe impl Wtf8Index for Range<usize> {
@@ -548,7 +494,7 @@ impl Iterator for CodePoints<'_> {
             // Safety: the char is ascii.
             return Some(unsafe { CodePoint::from_u32_unchecked(x as u32) });
         }
-        
+
         // Multibyte case follows
         // Decode from a byte combination out of: [[[x y] z] w]
         // NOTE: Performance is sensitive to the exact formulation here
@@ -568,7 +514,7 @@ impl Iterator for CodePoints<'_> {
                 ch = (init & 7) << 18 | utf8_acc_cont_byte(y_z, w);
             }
         }
-        
+
         // Safety: the code point can not be greater than 0x10_FFFF.
         Some(unsafe { CodePoint::from_u32_unchecked(ch) })
     }
@@ -597,6 +543,95 @@ impl Iterator for EncodeUtf16<'_> {
     }
 }
 impl FusedIterator for EncodeUtf16<'_> {}
+
+/// Part of a WTF-8 slice.
+///
+/// Either an [`Utf8`](Self::Utf8) string, or a [`UnpairedSurrogate`](Self::UnpairedSurrogate).
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum Wtf8Chunk<'a> {
+    /// The chunk as a UTF-8 string.
+    Utf8(&'a str),
+
+    /// The chunk as an unpaired surrogate.
+    UnpairedSurrogate(u16),
+}
+
+impl<'a> Wtf8Chunk<'a> {
+    /// Returns `Some(_)` if the chunk is UTF-8, and `None` if not.
+    #[inline]
+    pub fn utf8(self) -> Option<&'a str> {
+        match self {
+            Wtf8Chunk::Utf8(a) => Some(a),
+            _ => None,
+        }
+    }
+}
+
+/// An iterator created by [`chunks`](Wtf8::chunks).
+pub struct Chunks<'a>(&'a [u8]);
+impl Chunks<'_> {
+    #[inline]
+    pub(crate) fn next_surrogate(&self) -> Option<usize> {
+        let mut pos = 0;
+        let mut iter = self.0.iter();
+
+        loop {
+            let b = *iter.next()?;
+            if b < 0x80 {
+                pos += 1;
+            } else if b < 0xE0 {
+                iter.next();
+                pos += 2;
+            } else if b == 0xED {
+                match (iter.next(), iter.next()) {
+                    (Some(&b2), Some(_)) if b2 >= 0xA0 => {
+                        return Some(pos);
+                    }
+                    _ => pos += 3,
+                }
+            } else if b < 0xF0 {
+                iter.next();
+                iter.next();
+                pos += 3;
+            } else {
+                iter.next();
+                iter.next();
+                iter.next();
+                pos += 4;
+            }
+        }
+    }
+}
+impl<'a> Iterator for Chunks<'a> {
+    type Item = Wtf8Chunk<'a>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Wtf8Chunk<'a>> {
+        match self.next_surrogate() {
+            Some(0) => {
+                let s = decode_surrogate(self.0[1], self.0[2]);
+                self.0 = &self.0[3..];
+                Some(Wtf8Chunk::UnpairedSurrogate(s))
+            }
+
+            Some(x) => {
+                let r = &self.0[..x];
+                self.0 = &self.0[x..];
+                // Safety: there are no surrogates, therefore the string is UTF-8.
+                Some(Wtf8Chunk::Utf8(unsafe { str::from_utf8_unchecked(r) }))
+            }
+
+            None if self.0.is_empty() => None,
+
+            None => {
+                let r = self.0;
+                self.0 = &[];
+                // Safety: there are no surrogates, therefore the string is UTF-8.
+                Some(Wtf8Chunk::Utf8(unsafe { str::from_utf8_unchecked(r) }))
+            }
+        }
+    }
+}
 
 mod private {
     use core::ops::{Range, RangeFrom, RangeFull, RangeTo};
