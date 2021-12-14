@@ -1,5 +1,8 @@
 //! A WTF-8 slice.
 
+#[cfg(test)]
+mod tests;
+
 use crate::wtf8buf::Wtf8Buf;
 use crate::{codepoint, decode_surrogate, CodePoint};
 use alloc::borrow::Cow;
@@ -8,11 +11,12 @@ use alloc::rc::Rc;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::iter::FusedIterator;
-use core::ops::{Index, Range, RangeFrom, RangeFull, RangeTo};
-use core::{fmt, ptr, slice, str};
+use core::ops::Index;
+use core::{fmt, slice, str};
 
-#[cfg(test)]
-mod tests;
+mod index;
+
+pub use index::*;
 
 /// A WTF-8 slice.
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -340,81 +344,6 @@ impl AsRef<Wtf8> for str {
     }
 }
 
-/// A helper trait to do `get` operation on `Wtf8`.
-///
-/// This trait is sealed and not meant to be implemented by an user of this
-/// library.
-#[allow(clippy::missing_safety_doc)]
-pub unsafe trait Wtf8Index: fmt::Debug + Clone + private::Sealed {
-    fn get(self, slice: &Wtf8) -> Option<&Wtf8>;
-    unsafe fn get_unchecked(self, slice: *const Wtf8) -> *const Wtf8;
-}
-unsafe impl Wtf8Index for Range<usize> {
-    #[inline]
-    fn get(self, slice: &Wtf8) -> Option<&Wtf8> {
-        if self.start > self.end
-            || self.end >= slice.len()
-            || !slice.is_code_point_boundary(self.start)
-            || !slice.is_code_point_boundary(self.end)
-        {
-            None
-        } else {
-            // Safety: guaranteed by the conditions above.
-            Some(unsafe { &*self.get_unchecked(slice) })
-        }
-    }
-    #[inline]
-    unsafe fn get_unchecked(self, slice: *const Wtf8) -> *const Wtf8 {
-        ptr::slice_from_raw_parts(
-            (*slice).bytes.as_ptr().add(self.start),
-            self.end - self.start,
-        ) as _
-    }
-}
-unsafe impl Wtf8Index for RangeFrom<usize> {
-    #[inline]
-    fn get(self, slice: &Wtf8) -> Option<&Wtf8> {
-        if !slice.is_code_point_boundary(self.start) {
-            None
-        } else {
-            // Safety: guaranteed by the conditions above.
-            Some(unsafe { &*self.get_unchecked(slice) })
-        }
-    }
-    #[inline]
-    unsafe fn get_unchecked(self, slice: *const Wtf8) -> *const Wtf8 {
-        ptr::slice_from_raw_parts(
-            (*slice).bytes.as_ptr().add(self.start),
-            (*slice).len() - self.start,
-        ) as _
-    }
-}
-unsafe impl Wtf8Index for RangeTo<usize> {
-    #[inline]
-    fn get(self, slice: &Wtf8) -> Option<&Wtf8> {
-        if self.end >= slice.len() || !slice.is_code_point_boundary(self.end) {
-            None
-        } else {
-            // Safety: guaranteed by the conditions above.
-            Some(unsafe { &*self.get_unchecked(slice) })
-        }
-    }
-    #[inline]
-    unsafe fn get_unchecked(self, slice: *const Wtf8) -> *const Wtf8 {
-        ptr::slice_from_raw_parts((*slice).bytes.as_ptr(), self.end) as _
-    }
-}
-unsafe impl Wtf8Index for RangeFull {
-    #[inline]
-    fn get(self, slice: &Wtf8) -> Option<&Wtf8> {
-        Some(slice)
-    }
-    #[inline]
-    unsafe fn get_unchecked(self, slice: *const Wtf8) -> *const Wtf8 {
-        slice
-    }
-}
-
 /// Errors which can occur when converting `Wtf8` to `str`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ToStrError {
@@ -631,14 +560,4 @@ impl<'a> Iterator for Chunks<'a> {
             }
         }
     }
-}
-
-mod private {
-    use core::ops::{Range, RangeFrom, RangeFull, RangeTo};
-
-    pub trait Sealed {}
-    impl Sealed for Range<usize> {}
-    impl Sealed for RangeFrom<usize> {}
-    impl Sealed for RangeTo<usize> {}
-    impl Sealed for RangeFull {}
 }
